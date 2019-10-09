@@ -36,7 +36,20 @@ class CalcScreen extends StatefulWidget {
 class _CalcScreenState extends StateWithBag<CalcScreen> {
   @override
   Widget build(BuildContext context) {
-    return Container();
+    return StreamBuilder<List<String>>(
+      stream: widget.bloc.allPossibleStates,
+      builder: (_, snapshot) {
+        if (!snapshot.hasData) {
+          return Container();
+        }
+
+        return ListView.builder(
+            itemCount: snapshot.data.length,
+            itemBuilder: (_, id) {
+              return Text(snapshot.data[id]);
+            });
+      },
+    );
   }
 
   @override

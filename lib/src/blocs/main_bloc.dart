@@ -2,71 +2,63 @@ import 'package:flutter_saimmod_3/src/screens/navigation_info.dart';
 import 'package:flutter_saimmod_3/src/support_classes/disposable.dart';
 import 'package:rxdart/rxdart.dart';
 
-enum TypeOfSource { randomSource, periodicSource }
-enum TypeOfWorkNode { channel, queue }
+enum NodeType { randomSource, periodicSource, channel, queue }
 enum InfluenceType { block, error }
 
-abstract class Node {
+class Node {
   List<int> childrenId = [];
   final int id;
   double val;
-  Node(this.id, this.val);
-}
-
-class Source extends Node {
-  TypeOfSource type;
-  InfluenceType influenceType;
-  Source(int id, double val, this.type, this.influenceType) : super(id, val);
-}
-
-class WorkNode extends Node {
   int parentId;
-  TypeOfWorkNode type;
+  NodeType type;
   InfluenceType influenceType;
-  WorkNode(int id, this.type, this.parentId, this.influenceType, double val)
-      : super(id, val);
+  Node(this.id, this.val, this.parentId, this.type, this.influenceType);
 }
 
 class ResultData {
-  final List<WorkNode> workers;
-  final Source source;
-  ResultData(this.source, this.workers);
+  final List<Node> nodes;
+  Node get source => nodes[0];
+
+  bool isBlock(int i) {
+    return nodes[i].influenceType == InfluenceType.block;
+  }
+
+  bool isSourcePeriodic() {
+    return nodes[0].type == NodeType.periodicSource;
+  }
+
+  bool isChannel(int i) {
+    return nodes[i].type == NodeType.channel;
+  }
+
+  ResultData(this.nodes);
 }
 
 class MainBloc implements Disposable {
-  BehaviorSubject<List<WorkNode>> _workNodes = BehaviorSubject.seeded([
-    WorkNode(1, TypeOfWorkNode.channel, 0, InfluenceType.block, 0.5),
-    WorkNode(2, TypeOfWorkNode.channel, 1, InfluenceType.block, 0.5),
-    WorkNode(3, TypeOfWorkNode.channel, 2, InfluenceType.block, 0.5)
+  BehaviorSubject<List<Node>> _nodes = BehaviorSubject.seeded([
+    Node(0, 2, null, NodeType.periodicSource, InfluenceType.block),
+    Node(1, 0.5, 0, NodeType.channel, InfluenceType.block),
+    Node(2, 0.5, 1, NodeType.channel, InfluenceType.block),
+    Node(3, 0.5, 2, NodeType.channel, InfluenceType.block),
   ]);
-  BehaviorSubject<Source> _source =
-      BehaviorSubject.seeded(Source(0, 2, TypeOfSource.periodicSource, InfluenceType.block));
   BehaviorSubject<int> _currStep = BehaviorSubject.seeded(0);
   PublishSubject<NavigationInfo> _navigate = PublishSubject();
 
   Observable<NavigationInfo> get navigate => _navigate;
 
   Observable<int> get currStep => _currStep;
-  Observable<Source> get source => _source;
-  Observable<List<WorkNode>> get workers => _workNodes;
+  Observable<List<Node>> get workers => _nodes;
 
   incrementStep(int step) {
     if (step != 3) {
       _currStep.add(step + 1);
     } else {
-      final source = _source.value;
-      final workers = _workNodes.value;
-      source.childrenId = [];
-      workers.forEach((v) => v.childrenId = []);
-      for (int i = 0; i < workers.length; i++) {
-        if(workers[i].parentId == 0) {
-          source.childrenId.add(i + 1);
-        } else {
-          workers[workers[i].parentId - 1].childrenId.add(i + 1);
-        }
+      final nodes = _nodes.value;
+      nodes.forEach((v) => v.childrenId = []);
+      for (int i = 1; i < nodes.length; i++) {
+        nodes[nodes[i].parentId].childrenId.add(i);
       }
-      _navigate.add(NavigationInfo(ScreenType.calc,
-          args: ResultData(_source.value, _workNodes.value)));
+      _navigate.add(NavigationInfo(ScreenType.calc, args: ResultData(nodes)));
     }
   }
 
@@ -76,75 +68,62 @@ class MainBloc implements Disposable {
     }
   }
 
-  changeSource(TypeOfSource sourceType) {
-    var source = _source.value;
-    source.type = sourceType;
+  changeSource(NodeType sourceType) {
+    var nodes = _nodes.value;
+    nodes[0].type = sourceType;
     switch (sourceType) {
-      case TypeOfSource.periodicSource:
-        source.val = 2;
-        _source.add(source);
+      case NodeType.periodicSource:
+        nodes[0].val = 2;
+        _nodes.add(nodes);
         break;
-      case TypeOfSource.randomSource:
-        source.val = 0.5;
-        _source.add(source);
+      case NodeType.randomSource:
+        nodes[0].val = 0.5;
+        _nodes.add(nodes);
         break;
       default:
-        throw 'Not source type';
+        throw 'Not a source type';
     }
   }
 
-  setSourceVal(double val) {
-    var source = _source.value;
-    source.val = val;
-    _source.add(source);
-  }
-
-  changeWorkerType(TypeOfWorkNode sourceType, int workerNum) {
-    var workNodes = _workNodes.value;
-    workNodes[workerNum].type = sourceType;
-    switch (sourceType) {
-      case TypeOfWorkNode.channel:
-        workNodes[workerNum].val = 0.5;
-        _workNodes.add(workNodes);
+  changeWorkerType(NodeType nodeType, int stepId) {
+    var nodes = _nodes.value;
+    nodes[stepId].type = nodeType;
+    switch (nodeType) {
+      case NodeType.channel:
+        nodes[stepId].val = 0.5;
+        _nodes.add(nodes);
         break;
-      case TypeOfWorkNode.queue:
-        workNodes[workerNum].val = 2;
-        _workNodes.add(workNodes);
+      case NodeType.queue:
+        nodes[stepId].val = 2;
+        _nodes.add(nodes);
         break;
       default:
-        throw 'Not worker type';
+        throw 'Not a worker type';
     }
   }
 
-  changeSourceInfluence(InfluenceType sourceType) {
-    var source = _source.value;
-    source.influenceType = sourceType;
-    _source.add(source);
-  }
-
-  changeInfluence(InfluenceType sourceType, int workerNum) {
-    var workNodes = _workNodes.value;
-    workNodes[workerNum].influenceType = sourceType;
-    _workNodes.add(workNodes);
+  changeInfluence(InfluenceType newInfluenceType, int stepId) {
+    var nodes = _nodes.value;
+    nodes[stepId].influenceType = newInfluenceType;
+    _nodes.add(nodes);
   }
 
   setWorkNodeVal(double val, int stepId) {
-    var workNodes = _workNodes.value;
-    workNodes[stepId].val = val;
-    _workNodes.add(workNodes);
+    var nodes = _nodes.value;
+    nodes[stepId].val = val;
+    _nodes.add(nodes);
   }
 
-  setWorkNodeParent(int parent, int stepId) {
-    var workNodes = _workNodes.value;
-    workNodes[stepId].parentId = parent;
-    _workNodes.add(workNodes);
+  setParentNode(int parent, int stepId) {
+    var nodes = _nodes.value;
+    nodes[stepId].parentId = parent;
+    _nodes.add(nodes);
   }
 
   @override
   void dispose() {
     _navigate.close();
     _currStep.close();
-    _source.close();
-    _workNodes.close();
+    _nodes.close();
   }
 }

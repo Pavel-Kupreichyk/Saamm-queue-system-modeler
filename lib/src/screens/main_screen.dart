@@ -41,41 +41,41 @@ class _MainScreenState extends StateWithBag<MainScreen> {
           steps: <Step>[
             Step(
               title: Text('Select Source'),
-              content: StreamBuilder<Source>(
-                stream: widget.bloc.source,
+              content: StreamBuilder<List<Node>>(
+                stream: widget.bloc.workers,
                 builder: (_, snapshot) {
                   if (!snapshot.hasData) {
                     return Container();
                   }
-                  final infType = snapshot.data.influenceType;
-                  final type = snapshot.data.type;
-                  final data = snapshot.data.val;
+                  final infType = snapshot.data[0].influenceType;
+                  final type = snapshot.data[0].type;
+                  final data = snapshot.data[0].val;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Row(
                         children: <Widget>[
-                          _createSourceTypeRadio(
-                              TypeOfSource.periodicSource, 'Periodic', type),
-                          _createSourceTypeRadio(
-                              TypeOfSource.randomSource, 'Random', type),
+                          _createNodeTypeRadio(
+                              NodeType.periodicSource, 'Periodic', type, 0),
+                          _createNodeTypeRadio(
+                              NodeType.randomSource, 'Random', type, 0),
                         ],
                       ),
                       Row(
                         children: <Widget>[
-                          _createInfluenceSourceRadio(
-                              InfluenceType.block, 'Block', infType),
-                          _createInfluenceSourceRadio(
-                              InfluenceType.error, 'Error', infType),
+                          _createInfluenceTypeRadio(
+                              InfluenceType.block, 'Block', infType, 0),
+                          _createInfluenceTypeRadio(
+                              InfluenceType.error, 'Error', infType, 0),
                         ],
                       ),
                       Slider(
                         value: data,
-                        min: type == TypeOfSource.periodicSource ? 1 : 0.01,
-                        max: type == TypeOfSource.periodicSource ? 10 : 1,
-                        divisions: type == TypeOfSource.periodicSource ? 9 : 99,
-                        onChanged: widget.bloc.setSourceVal,
-                        label: type == TypeOfSource.periodicSource
+                        min: type == NodeType.periodicSource ? 1 : 0.01,
+                        max: type == NodeType.periodicSource ? 10 : 1,
+                        divisions: type == NodeType.periodicSource ? 9 : 99,
+                        onChanged: (val) => widget.bloc.setWorkNodeVal(val, 0),
+                        label: type == NodeType.periodicSource
                             ? 'period: ${data.toInt()}'
                             : 'r: ${data.toStringAsFixed(2)}',
                       ),
@@ -84,9 +84,9 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                 },
               ),
             ),
-            Step(title: Text('Create 1 node'), content: createWorker(0)),
-            Step(title: Text('Create 2 node'), content: createWorker(1)),
-            Step(title: Text('Create 3 node'), content: createWorker(2)),
+            Step(title: Text('Create 1 node'), content: createWorker(1)),
+            Step(title: Text('Create 2 node'), content: createWorker(2)),
+            Step(title: Text('Create 3 node'), content: createWorker(3)),
           ],
           onStepContinue: () => widget.bloc.incrementStep(currStep),
           onStepCancel: () => widget.bloc.decrementStep(currStep),
@@ -96,7 +96,7 @@ class _MainScreenState extends StateWithBag<MainScreen> {
   }
 
   Widget createWorker(int workerNum) {
-    return StreamBuilder<List<WorkNode>>(
+    return StreamBuilder<List<Node>>(
       stream: widget.bloc.workers,
       builder: (_, snapshot) {
         if (!snapshot.hasData) {
@@ -111,10 +111,9 @@ class _MainScreenState extends StateWithBag<MainScreen> {
           children: <Widget>[
             Row(
               children: <Widget>[
-                _createWorkerTypeRadio(
-                    TypeOfWorkNode.channel, 'Channel', type, workerNum),
-                _createWorkerTypeRadio(
-                    TypeOfWorkNode.queue, 'Queue', type, workerNum),
+                _createNodeTypeRadio(
+                    NodeType.channel, 'Channel', type, workerNum),
+                _createNodeTypeRadio(NodeType.queue, 'Queue', type, workerNum),
               ],
             ),
             Row(
@@ -127,24 +126,24 @@ class _MainScreenState extends StateWithBag<MainScreen> {
             ),
             Slider(
               value: data,
-              min: type == TypeOfWorkNode.queue ? 1 : 0.01,
-              max: type == TypeOfWorkNode.queue ? 10 : 1,
-              divisions: type == TypeOfWorkNode.queue ? 9 : 99,
+              min: type == NodeType.queue ? 1 : 0.01,
+              max: type == NodeType.queue ? 10 : 1,
+              divisions: type == NodeType.queue ? 9 : 99,
               onChanged: (val) => widget.bloc.setWorkNodeVal(val, workerNum),
-              label: type == TypeOfWorkNode.queue
+              label: type == NodeType.queue
                   ? 'queue: ${data.toInt()}'
                   : 'channel: ${data.toStringAsFixed(2)}',
             ),
             SizedBox(
               width: 200,
-              child: workerNum != 0
+              child: workerNum != 1
                   ? Slider(
                       value: parent.toDouble(),
                       min: 0,
-                      max: workerNum.toDouble(),
-                      divisions: workerNum,
+                      max: (workerNum-1).toDouble(),
+                      divisions: workerNum-1,
                       onChanged: (val) =>
-                          widget.bloc.setWorkNodeParent(val.round(), workerNum),
+                          widget.bloc.setParentNode(val.round(), workerNum),
                       label: 'parent: ${parent + 1}',
                     )
                   : Text('Child of source'),
@@ -152,20 +151,6 @@ class _MainScreenState extends StateWithBag<MainScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _createInfluenceSourceRadio(
-      InfluenceType val, String desc, InfluenceType currData) {
-    return Row(
-      children: <Widget>[
-        Text(desc),
-        Radio(
-          value: val,
-          groupValue: currData,
-          onChanged: widget.bloc.changeSourceInfluence,
-        ),
-      ],
     );
   }
 
@@ -183,29 +168,17 @@ class _MainScreenState extends StateWithBag<MainScreen> {
     );
   }
 
-  Widget _createWorkerTypeRadio(
-      TypeOfWorkNode val, String desc, TypeOfWorkNode currData, int step) {
+  Widget _createNodeTypeRadio(
+      NodeType val, String desc, NodeType currData, int step) {
     return Row(
       children: <Widget>[
         Text(desc),
         Radio(
           value: val,
           groupValue: currData,
-          onChanged: (val) => widget.bloc.changeWorkerType(val, step),
-        ),
-      ],
-    );
-  }
-
-  Widget _createSourceTypeRadio(
-      TypeOfSource val, String desc, TypeOfSource currData) {
-    return Row(
-      children: <Widget>[
-        Text(desc),
-        Radio(
-          value: val,
-          groupValue: currData,
-          onChanged: widget.bloc.changeSource,
+          onChanged: step != 0
+              ? (val) => widget.bloc.changeWorkerType(val, step)
+              : widget.bloc.changeSource,
         ),
       ],
     );
