@@ -116,14 +116,14 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                 _createNodeTypeRadio(NodeType.queue, 'Queue', type, workerNum),
               ],
             ),
-            Row(
+            type == NodeType.channel ? Row(
               children: <Widget>[
                 _createInfluenceTypeRadio(
                     InfluenceType.block, 'Block', infType, workerNum),
                 _createInfluenceTypeRadio(
                     InfluenceType.error, 'Error', infType, workerNum),
               ],
-            ),
+            ) : Container(),
             Slider(
               value: data,
               min: type == NodeType.queue ? 1 : 0.01,

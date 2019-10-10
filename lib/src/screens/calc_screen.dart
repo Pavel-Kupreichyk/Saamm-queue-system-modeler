@@ -42,38 +42,33 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
       stream: widget.bloc.allPossibleStates,
       builder: (_, snapshot) {
         if (!snapshot.hasData) {
-          return Container();
+          return Center(child: CircularProgressIndicator());
         }
         var info = snapshot.data;
-        return GridView.builder(
-          scrollDirection: Axis.horizontal,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: info.length + 1,childAspectRatio: 0.5),
-          itemCount: pow(info.length + 1, 2),
-          itemBuilder: (BuildContext context, int index) {
-            var row = index ~/ (info.length + 1);
-            var column = index % (info.length + 1);
-            String data;
-            if (row == 0 && column == 0) {
-              return Container();
-            } else if (row == 0) {
-              var state = info[column - 1].state;
-              data = '${state[0]}${state[1]}${state[2]}${state[3]}';
-            } else if (column == 0) {
-              var state = info[row - 1].state;
-              data = '${state[0]}${state[1]}${state[2]}${state[3]}';
-            } else {
-              data = 'None';
-              for(var child in info[column-1].childStates) {
-                if(widget.bloc.compareStates(child.state, info[row-1].state)) {
-                  data = child.desc.isNotEmpty ? child.desc : '1';
-                }
-              }
-            }
-            return Container(
-              child: Text(data),
-            );
-          },
+        var dataSource = CustomDataSource(info);
+
+        List<DataColumn> columns = info
+            .map((val) => DataColumn(
+                label: Text(
+                    '${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}')))
+            .toList();
+        columns.insert(0, DataColumn(label: Text('State')));
+        columns.add(DataColumn(label: Text('State')));
+        return SafeArea(
+          bottom: false,
+          child: Scrollbar(
+            child: ListView(
+              children: <Widget>[
+                PaginatedDataTable(
+                  header: const Text('State graph'),
+                  rowsPerPage: snapshot.data.length+1,
+                  columns: columns,
+                  source: dataSource,
+                  columnSpacing: 10,
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -83,4 +78,75 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
   void setupBindings() {
     // TODO: implement setupBindings
   }
+}
+
+class CustomDataSource extends DataTableSource {
+  final List<StateInfo> results;
+  CustomDataSource(this.results);
+
+  @override
+  DataRow getRow(int index) {
+    List<DataCell> cells = index != results.length
+        ? createRegularListOfCells(index)
+        : createInfoListOfCells();
+    return DataRow(
+      cells: cells,
+    );
+  }
+
+  List<DataCell> createInfoListOfCells() {
+    var infoCell = DataCell(Text('State'));
+    List<DataCell> cells = [infoCell];
+
+    for (int i = 0; i < results.length; i++) {
+      var val = results[i];
+      cells.add(DataCell(Text(
+          '${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}')));
+    }
+    cells.add(infoCell);
+    return cells;
+  }
+
+  List<DataCell> createRegularListOfCells(int index) {
+    var val = results[index];
+    var infoCell = DataCell(
+        Text('${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}'));
+    List<DataCell> cells = [infoCell];
+
+    for (int i = 0; i < results.length; i++) {
+      var cellToAdd = DataCell(Text('None'));
+      for (var child in val.childStates) {
+        if (compareStates(child.state, results[i].state)) {
+          cellToAdd = DataCell(Text(
+            child.desc.isNotEmpty ? child.desc : '1',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ));
+        }
+      }
+      cells.add(cellToAdd);
+    }
+    cells.add(infoCell);
+    return cells;
+  }
+
+  compareStates(List<int> state1, List<int> state2) {
+    for (int i = 0; i < state1.length; i++) {
+      if (state1[i] != state2[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  // TODO: implement isRowCountApproximate
+  bool get isRowCountApproximate => false;
+
+  @override
+  // TODO: implement rowCount
+  int get rowCount => results.length + 1;
+
+  @override
+  // TODO: implement selectedRowCount
+  int get selectedRowCount => 0;
 }

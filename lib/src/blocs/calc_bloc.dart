@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_saimmod_3/src/blocs/main_bloc.dart';
 import 'package:flutter_saimmod_3/src/support_classes/disposable.dart';
 import 'package:rxdart/rxdart.dart';
@@ -19,31 +20,33 @@ class StateData {
 class CalcBloc implements Disposable {
   final ResultData data;
   Random random = Random();
-  final List<StateInfo> infoList = [];
   BehaviorSubject<List<StateInfo>> _allPossibleStates = BehaviorSubject();
   Observable<List<StateInfo>> get allPossibleStates => _allPossibleStates;
 
   CalcBloc(this.data) {
-    infoList.add(StateInfo(getFirstState()));
-    getAllStates();
-    _allPossibleStates.add(infoList);
+    emitStates();
   }
 
-  getAllStates() {
-    int i = 0;
-    while (i < infoList.length) {
-      var states = _getPossibleStates(infoList[i].state);
+  emitStates() async {
+    var res = await compute(getAllStates, data);
+    _allPossibleStates.add(res);
+  }
+
+  static getAllStates(ResultData data) {
+    List<StateInfo> infoList = [StateInfo(getFirstState(data))];
+    for (int i = 0; i < infoList.length; i++) {
+      var states = _getPossibleStates(infoList[i].state, data);
       infoList[i].childStates = states;
       for (var state in states) {
         if (!infoList.any((s) => compareStates(s.state, state.state))) {
           infoList.add(StateInfo(state.state));
         }
       }
-      i++;
     }
+    return infoList;
   }
 
-  compareStates(List<int> state1, List<int> state2) {
+  static compareStates(List<int> state1, List<int> state2) {
     for (int i = 0; i < state1.length; i++) {
       if (state1[i] != state2[i]) {
         return false;
@@ -52,13 +55,14 @@ class CalcBloc implements Disposable {
     return true;
   }
 
-  List<int> getFirstState() {
+  static List<int> getFirstState(ResultData data) {
     List<int> state = List.filled(data.nodes.length, 0);
     state[0] = (data.isSourcePeriodic() ? data.source.val.round() : 0);
     return state;
   }
 
-  List<StateData> _getPossibleStates(List<int> initState) {
+  static List<StateData> _getPossibleStates(
+      List<int> initState, ResultData data) {
     List<StateData> states = [];
     states.add(StateData(List<int>.from(initState)));
 
@@ -129,6 +133,35 @@ class CalcBloc implements Disposable {
       states.addAll(generatedStates);
     }
     return states;
+  }
+// Add desc
+  static List<StateData> incrementQueue(
+      StateData state, int queueId, ResultData data) {
+    if (state.state[queueId] > 0) {
+      var copy = List<int>.from(state.state);
+      copy[queueId] += 1;
+      return [StateData(copy)..desc = state.desc];
+    }
+
+    List<StateData> queues = [];
+    var fl = true;
+    for (var childId in data.nodes[queueId].childrenId) {
+      if (data.isChannel(queueId) && state.state[childId] == 0) {
+        fl = false;
+        var copy = List<int>.from(state.state);
+        copy[childId] = 1;
+        queues.add(StateData(copy)..desc = state.desc);
+        break;
+      } else if (!data.isChannel(queueId) && state.state[childId] < data.nodes[childId].val.round()) {
+        //incrementQueue(state, queueId, data);
+      }
+    }
+    if (fl) {
+      var copy = List<int>.from(state.state);
+      copy[queueId] = data.nodes[queueId].childrenId.isNotEmpty ? 1 : 0;
+      queues.add(StateData(copy)..desc = state.desc);
+    }
+    return queues;
   }
 
   bool randomBool(double trueProbability) {
