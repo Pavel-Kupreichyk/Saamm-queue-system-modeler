@@ -6,53 +6,46 @@ import 'package:rxdart/rxdart.dart';
 
 class StateInfo {
   final List<int> state;
-  //Map<List<int>, String> childStates;
-  List<List<int>> childStates;
+  List<StateData> childStates;
   StateInfo(this.state);
+}
+
+class StateData {
+  List<int> state;
+  String desc = '';
+  StateData(this.state);
 }
 
 class CalcBloc implements Disposable {
   final ResultData data;
   Random random = Random();
   final List<StateInfo> infoList = [];
-  //final List<List<int>> states = [];
-  //List<int> currState;
-  BehaviorSubject<List<String>> _allPossibleStates = BehaviorSubject();
-  Observable<List<String>> get allPossibleStates => _allPossibleStates;
+  BehaviorSubject<List<StateInfo>> _allPossibleStates = BehaviorSubject();
+  Observable<List<StateInfo>> get allPossibleStates => _allPossibleStates;
 
   CalcBloc(this.data) {
-    data.nodes.forEach((t) {
-      print('node');
-      t.childrenId.forEach(print);
-    });
-
-    //currState = getFirstState();
     infoList.add(StateInfo(getFirstState()));
     getAllStates();
-    List<String> results = [];
-    infoList.forEach((val) {
-      var state = val.state;
-      results.add('${state[0]}${state[1]}${state[2]}${state[3]}');
-    });
-    _allPossibleStates.add(results);
+    _allPossibleStates.add(infoList);
   }
 
   getAllStates() {
     int i = 0;
-    while(i< infoList.length) {
+    while (i < infoList.length) {
       var states = _getPossibleStates(infoList[i].state);
       infoList[i].childStates = states;
-      for(var state in states) {
-        if(!infoList.any((s) => compareStates(s.state, state))) {
-          infoList.add(StateInfo(state));
+      for (var state in states) {
+        if (!infoList.any((s) => compareStates(s.state, state.state))) {
+          infoList.add(StateInfo(state.state));
         }
       }
       i++;
     }
   }
+
   compareStates(List<int> state1, List<int> state2) {
-    for(int i = 0;i< state1.length;i++) {
-      if(state1[i] != state2[i]) {
+    for (int i = 0; i < state1.length; i++) {
+      if (state1[i] != state2[i]) {
         return false;
       }
     }
@@ -65,38 +58,42 @@ class CalcBloc implements Disposable {
     return state;
   }
 
-  List<List<int>> _getPossibleStates(List<int> initState) {
-    print('new');
-    print('${initState[0]}${initState[1]}${initState[2]}${initState[3]}');
-    List<List<int>> states = [];
-    states.add(List<int>.from(initState));
+  List<StateData> _getPossibleStates(List<int> initState) {
+    List<StateData> states = [];
+    states.add(StateData(List<int>.from(initState)));
 
     for (int i = data.nodes.length - 1; i >= 0; i--) {
-      List<List<int>> generatedStates = [];
+      List<StateData> generatedStates = [];
       switch (data.nodes[i].type) {
         case NodeType.channel:
           if (initState[i] == 1) {
             for (var state in states) {
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
-                if (state[childId] == 0) {
+                if (state.state[childId] == 0) {
                   fl = false;
-                  var copy = List<int>.from(state);
+                  var copy = List<int>.from(state.state);
                   copy[childId] = 1;
                   copy[i] = 0;
-                  generatedStates.add(copy);
+                  generatedStates.add(StateData(copy)
+                    ..desc = state.desc +
+                        (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)'));
+                  state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
                   break;
                 }
               }
 
               if (fl) {
-                var copy = List<int>.from(state);
-                if(data.nodes[i].childrenId.isNotEmpty) {
+                var copy = List<int>.from(state.state);
+                if (data.nodes[i].childrenId.isNotEmpty) {
                   copy[i] = data.isBlock(i) ? 1 : 0;
                 } else {
                   copy[i] = 0;
                 }
-                generatedStates.add(copy);
+                generatedStates.add(StateData(copy)
+                  ..desc = state.desc +
+                      (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)'));
+                state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
               }
             }
           }
@@ -105,23 +102,23 @@ class CalcBloc implements Disposable {
           break;
         case NodeType.periodicSource:
           if (initState[i] > 1) {
-            for(var state in states) {
-              state[i] -= 1;
+            for (var state in states) {
+              state.state[i] -= 1;
             }
           } else if (initState[i] <= 1) {
             for (var state in states) {
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
-                if (state[childId] == 0) {
+                if (state.state[childId] == 0) {
                   fl = false;
-                  state[childId] = 1;
-                  state[i] = data.source.val.round();
+                  state.state[childId] = 1;
+                  state.state[i] = data.source.val.round();
                   break;
                 }
               }
 
               if (fl) {
-                state[i] = data.isBlock(i) ? 0 : data.source.val.round();
+                state.state[i] = data.isBlock(i) ? 0 : data.source.val.round();
               }
             }
           }
@@ -131,8 +128,6 @@ class CalcBloc implements Disposable {
       }
       states.addAll(generatedStates);
     }
-    print('-----');
-    states.forEach((s) =>  print('${s[0]}${s[1]}${s[2]}${s[3]}'));
     return states;
   }
 
