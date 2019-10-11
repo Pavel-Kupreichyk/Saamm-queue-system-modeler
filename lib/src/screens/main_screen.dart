@@ -42,7 +42,7 @@ class _MainScreenState extends StateWithBag<MainScreen> {
           padding: const EdgeInsets.only(top: 40.0, left: 25),
           child: Text(
             'Nodes count selection',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ),
         StreamBuilder<int>(
@@ -81,7 +81,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                     Step(
                         title: Text(
                           'Select Source',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                         content: createSource(nodes))
                   ];
@@ -91,7 +92,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                       Step(
                         title: Text(
                           'Select channel or queue',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                         content: createWorker(i, nodes),
                       ),
@@ -153,12 +155,17 @@ class _MainScreenState extends StateWithBag<MainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Text('Type of node:', style: TextStyle(fontWeight: FontWeight.bold)),
         Row(
           children: <Widget>[
             _createNodeTypeRadio(NodeType.channel, 'Channel', type, workerNum),
             _createNodeTypeRadio(NodeType.queue, 'Queue', type, workerNum),
           ],
         ),
+        type == NodeType.channel
+            ? Text('Overflow behaviour:',
+                style: TextStyle(fontWeight: FontWeight.bold))
+            : Container(),
         type == NodeType.channel
             ? Row(
                 children: <Widget>[
@@ -169,6 +176,7 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                 ],
               )
             : Container(),
+        Text('Value:', style: TextStyle(fontWeight: FontWeight.bold)),
         Slider(
           value: data,
           min: type == NodeType.queue ? 1 : 0.01,
@@ -179,6 +187,7 @@ class _MainScreenState extends StateWithBag<MainScreen> {
               ? 'size: ${data.round()}'
               : 'П: ${data.toStringAsFixed(2)}',
         ),
+        Text('Parent:', style: TextStyle(fontWeight: FontWeight.bold)),
         SizedBox(
           width: 200,
           child: workerNum != 1
@@ -191,7 +200,7 @@ class _MainScreenState extends StateWithBag<MainScreen> {
                       widget.bloc.setParentNode(val.round(), workerNum),
                   label: 'parent: ${parent + 1}',
                 )
-              : Text('Child of source'),
+              : Text('Source'),
         ),
       ],
     );
@@ -204,18 +213,22 @@ class _MainScreenState extends StateWithBag<MainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Text('Type of source:', style: TextStyle(fontWeight: FontWeight.bold)),
         Row(
           children: <Widget>[
             _createNodeTypeRadio(NodeType.periodicSource, 'Periodic', type, 0),
             _createNodeTypeRadio(NodeType.randomSource, 'Random', type, 0),
           ],
         ),
+        Text('Overflow behaviour:',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         Row(
           children: <Widget>[
             _createInfluenceTypeRadio(InfluenceType.block, 'Block', infType, 0),
             _createInfluenceTypeRadio(InfluenceType.error, 'Error', infType, 0),
           ],
         ),
+        Text('Value:', style: TextStyle(fontWeight: FontWeight.bold)),
         Slider(
           value: data,
           min: type == NodeType.periodicSource ? 1 : 0.01,
