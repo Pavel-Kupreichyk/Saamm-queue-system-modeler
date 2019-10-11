@@ -72,37 +72,57 @@ class CalcBloc implements Disposable {
         case NodeType.channel:
           if (initState[i] == 1) {
             for (var state in states) {
+              var copy = StateData(List<int>.from(state.state));
+              copy.desc =
+                  state.desc + (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)');
+              state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
-                if (state.state[childId] == 0) {
+                if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
-                  var copy = List<int>.from(state.state);
-                  copy[childId] = 1;
-                  copy[i] = 0;
-                  generatedStates.add(StateData(copy)
-                    ..desc = state.desc +
-                        (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)'));
-                  state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
+                  copy.state[childId] = 1;
+                  copy.state[i] = 0;
+                  generatedStates.add(copy);
+                  break;
+                } else if (!data.isChannel(childId) &&
+                    state.state[childId] < data.nodes[childId].val.round()) {
+                  fl = false;
+                  incrementQueue(copy.state, childId, data);
+                  copy.state[i] = 0;
+                  generatedStates.add(copy);
                   break;
                 }
               }
 
               if (fl) {
-                var copy = List<int>.from(state.state);
                 if (data.nodes[i].childrenId.isNotEmpty) {
-                  copy[i] = data.isBlock(i) ? 1 : 0;
+                  copy.state[i] = data.isBlock(i) ? 1 : 0;
                 } else {
-                  copy[i] = 0;
+                  copy.state[i] = 0;
                 }
-                generatedStates.add(StateData(copy)
-                  ..desc = state.desc +
-                      (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)'));
-                state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
+                generatedStates.add(copy);
               }
             }
           }
           break;
         case NodeType.queue:
+          if (initState[i] > 0) {
+            for (var state in states) {
+              for (var childId in data.nodes[i].childrenId) {
+                if(state.state[i] == 0) {
+                  break;
+                }
+                if (data.isChannel(childId) && state.state[childId] == 0) {
+                  state.state[childId] = 1;
+                  state.state[i]--;
+                } else if (!data.isChannel(childId) &&
+                    state.state[childId] < data.nodes[childId].val.round()) {
+                  incrementQueue(state.state, childId, data);
+                  state.state[i]--;
+                }
+              }
+            }
+          }
           break;
         case NodeType.periodicSource:
           if (initState[i] > 1) {
@@ -113,9 +133,15 @@ class CalcBloc implements Disposable {
             for (var state in states) {
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
-                if (state.state[childId] == 0) {
+                if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
                   state.state[childId] = 1;
+                  state.state[i] = data.source.val.round();
+                  break;
+                } else if (!data.isChannel(childId) &&
+                    state.state[childId] < data.nodes[childId].val.round()) {
+                  fl = false;
+                  incrementQueue(state.state, childId, data);
                   state.state[i] = data.source.val.round();
                   break;
                 }
@@ -134,34 +160,26 @@ class CalcBloc implements Disposable {
     }
     return states;
   }
-// Add desc
-  static List<StateData> incrementQueue(
-      StateData state, int queueId, ResultData data) {
-    if (state.state[queueId] > 0) {
-      var copy = List<int>.from(state.state);
-      copy[queueId] += 1;
-      return [StateData(copy)..desc = state.desc];
+
+  static List<int> incrementQueue(
+      List<int> state, int queueId, ResultData data) {
+    if (state[queueId] > 0) {
+      state[queueId]++;
+      return state;
     }
 
-    List<StateData> queues = [];
-    var fl = true;
     for (var childId in data.nodes[queueId].childrenId) {
-      if (data.isChannel(queueId) && state.state[childId] == 0) {
-        fl = false;
-        var copy = List<int>.from(state.state);
-        copy[childId] = 1;
-        queues.add(StateData(copy)..desc = state.desc);
-        break;
-      } else if (!data.isChannel(queueId) && state.state[childId] < data.nodes[childId].val.round()) {
-        //incrementQueue(state, queueId, data);
+      if (data.isChannel(childId) && state[childId] == 0) {
+        state[childId] = 1;
+        return state;
+      } else if (!data.isChannel(childId) &&
+          state[childId] < data.nodes[childId].val.round()) {
+        return incrementQueue(state, childId, data);
       }
     }
-    if (fl) {
-      var copy = List<int>.from(state.state);
-      copy[queueId] = data.nodes[queueId].childrenId.isNotEmpty ? 1 : 0;
-      queues.add(StateData(copy)..desc = state.desc);
-    }
-    return queues;
+
+    state[queueId] = data.nodes[queueId].childrenId.isNotEmpty ? 1 : 0;
+    return state;
   }
 
   bool randomBool(double trueProbability) {

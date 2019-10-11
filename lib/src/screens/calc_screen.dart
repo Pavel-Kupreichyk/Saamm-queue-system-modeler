@@ -114,16 +114,18 @@ class CustomDataSource extends DataTableSource {
     List<DataCell> cells = [infoCell];
 
     for (int i = 0; i < results.length; i++) {
-      var cellToAdd = DataCell(Text('None'));
+      var desc = '';
       for (var child in val.childStates) {
         if (compareStates(child.state, results[i].state)) {
-          cellToAdd = DataCell(Text(
-            child.desc.isNotEmpty ? child.desc : '1',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ));
+          if(desc.isEmpty) {
+            desc = child.desc.isNotEmpty ? child.desc : '1';
+          } else {
+            desc += ' | ' + (child.desc.isNotEmpty ? child.desc : '1');
+          }
         }
       }
-      cells.add(cellToAdd);
+      desc = desc.isEmpty ? '-' : desc;
+      cells.add(DataCell(Text(desc, style: TextStyle(fontWeight: FontWeight.bold),)));
     }
     cells.add(infoCell);
     return cells;
