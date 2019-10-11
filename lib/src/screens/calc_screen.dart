@@ -38,7 +38,7 @@ class CalcScreen extends StatefulWidget {
 class _CalcScreenState extends StateWithBag<CalcScreen> {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<StateInfo>>(
+    return StreamBuilder<TableInfo>(
       stream: widget.bloc.allPossibleStates,
       builder: (_, snapshot) {
         if (!snapshot.hasData) {
@@ -47,13 +47,8 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
         var info = snapshot.data;
         var dataSource = CustomDataSource(info);
 
-        List<DataColumn> columns = info.map((val) {
-          var str = '';
-          val.state.forEach((v) => str += v != -1 ? v.toString() : 'B');
-          return DataColumn(label: Text(str));
-        }).toList();
-        columns.insert(0, DataColumn(label: Text('State')));
-        columns.add(DataColumn(label: Text('State')));
+        List<DataColumn> columns =
+            info.desc.map((val) => DataColumn(label: Text(val))).toList();
         return SafeArea(
           bottom: false,
           child: Scrollbar(
@@ -61,7 +56,7 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
               children: <Widget>[
                 PaginatedDataTable(
                   header: const Text('State graph'),
-                  rowsPerPage: snapshot.data.length + 1,
+                  rowsPerPage: snapshot.data.rows.length + 1,
                   columns: columns,
                   source: dataSource,
                   columnSpacing: 10,
@@ -81,67 +76,20 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
 }
 
 class CustomDataSource extends DataTableSource {
-  final List<StateInfo> results;
+  final TableInfo results;
   CustomDataSource(this.results);
 
   @override
   DataRow getRow(int index) {
-    List<DataCell> cells = index != results.length
-        ? createRegularListOfCells(index)
-        : createInfoListOfCells();
+    List<DataCell> cells = [];
+    if(index < results.rows.length) {
+      results.rows[index].forEach((val) => cells.add(DataCell(Text(val))));
+    } else {
+      results.desc.forEach((val) => cells.add(DataCell(Text(val))));
+    }
     return DataRow(
       cells: cells,
     );
-  }
-
-  List<DataCell> createInfoListOfCells() {
-    var infoCell = DataCell(Text('State'));
-    List<DataCell> cells = [infoCell];
-
-    for (int i = 0; i < results.length; i++) {
-      var str = '';
-      results[i].state.forEach((v) => str += v != -1 ? v.toString() : 'B');
-      cells.add(DataCell(Text(str)));
-    }
-    cells.add(infoCell);
-    return cells;
-  }
-
-  List<DataCell> createRegularListOfCells(int index) {
-    var val = results[index];
-    var str = '';
-    val.state.forEach((v) => str += v != -1 ? v.toString() : 'B');
-    var infoCell = DataCell(Text(str));
-    List<DataCell> cells = [infoCell];
-
-    for (int i = 0; i < results.length; i++) {
-      var desc = '';
-      for (var child in val.childStates) {
-        if (compareStates(child.state, results[i].state)) {
-          if (desc.isEmpty) {
-            desc = child.desc.isNotEmpty ? child.desc : '1';
-          } else {
-            desc += ' +\n' + (child.desc.isNotEmpty ? child.desc : '1');
-          }
-        }
-      }
-      desc = desc.isEmpty ? '-' : desc;
-      cells.add(DataCell(Text(
-        desc,
-        style: TextStyle(fontWeight: FontWeight.bold),
-      )));
-    }
-    cells.add(infoCell);
-    return cells;
-  }
-
-  compareStates(List<int> state1, List<int> state2) {
-    for (int i = 0; i < state1.length; i++) {
-      if (state1[i] != state2[i]) {
-        return false;
-      }
-    }
-    return true;
   }
 
   @override
@@ -150,7 +98,7 @@ class CustomDataSource extends DataTableSource {
 
   @override
   // TODO: implement rowCount
-  int get rowCount => results.length + 1;
+  int get rowCount => results.rows.length + 1;
 
   @override
   // TODO: implement selectedRowCount

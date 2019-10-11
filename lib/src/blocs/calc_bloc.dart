@@ -17,22 +17,29 @@ class StateData {
   StateData(this.state);
 }
 
+class TableInfo {
+  final List<List<String>> rows;
+  final List<String> desc;
+  TableInfo(this.desc,this.rows);
+}
+
 class CalcBloc implements Disposable {
   final ResultData data;
   Random random = Random();
-  BehaviorSubject<List<StateInfo>> _allPossibleStates = BehaviorSubject();
-  Observable<List<StateInfo>> get allPossibleStates => _allPossibleStates;
+  BehaviorSubject<TableInfo> _allPossibleStates = BehaviorSubject();
+  Observable<TableInfo> get allPossibleStates => _allPossibleStates;
 
   CalcBloc(this.data) {
     emitStates();
   }
 
   emitStates() async {
-    var res = await compute(getAllStates, data);
-    _allPossibleStates.add(res);
+    var stateData = await compute(getAllStates, data);
+    var result = await compute(createTable, stateData);
+    _allPossibleStates.add(result);
   }
 
-  static getAllStates(ResultData data) {
+  static List<StateInfo> getAllStates(ResultData data) {
     List<StateInfo> infoList = [StateInfo(getFirstState(data))];
     for (int i = 0; i < infoList.length; i++) {
       var states = _getPossibleStates(infoList[i].state, data);
@@ -261,21 +268,19 @@ class CalcBloc implements Disposable {
   }
 
   //TABLE DATA CREATION
-  static List<List<String>> createTable(List<StateInfo> data) {
+  static TableInfo createTable(List<StateInfo> data) {
     List<List<String>> result = [];
     for (int i = 0; i < data.length; i++) {
-      result.add(i != data.length
-          ? createRegularListOfCells(i, data)
-          : createInfoListOfCells(data));
+      result.add(createRegularListOfCells(i, data));
     }
-    return result;
+    return TableInfo(createInfoListOfCells(data),result);
   }
 
   static List<String> createInfoListOfCells(List<StateInfo> data) {
     List<String> cells = ['State'];
 
     for (int i = 0; i < data.length; i++) {
-      cells.add(data[i].state.join());
+      cells.add(createStateDesc(data[i].state));
     }
     cells.add('State');
     return cells;
@@ -284,7 +289,7 @@ class CalcBloc implements Disposable {
   static List<String> createRegularListOfCells(
       int index, List<StateInfo> data) {
     var val = data[index];
-    var info = val.state.join();
+    var info = createStateDesc(val.state);
     List<String> cells = [info];
 
     for (int i = 0; i < data.length; i++) {
@@ -304,6 +309,13 @@ class CalcBloc implements Disposable {
     cells.add(info);
     return cells;
   }
+
+  static String createStateDesc(List<int> state) {
+    var str = '';
+    state.forEach((v) => str += v != -1 ? v.toString() : 'B');
+    return str;
+  }
+
   //TABLE DATA CREATION
 
   bool randomBool(double trueProbability) {

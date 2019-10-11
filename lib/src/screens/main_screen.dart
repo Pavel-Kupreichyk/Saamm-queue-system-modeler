@@ -55,8 +55,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
             return Slider(
               value: data.toDouble(),
               min: 1,
-              max: 7,
-              divisions: 6,
+              max: 6,
+              divisions: 5,
               onChanged: (val) => widget.bloc.changeNodesCount(val.round()),
               label: 'nodes: ${data.round()}',
             );
