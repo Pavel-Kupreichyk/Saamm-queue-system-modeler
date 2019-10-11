@@ -154,6 +154,62 @@ class CalcBloc implements Disposable {
           }
           break;
         case NodeType.randomSource:
+          if (initState[i] == 0) {
+            for (var state in states) {
+              var copy = StateData(List<int>.from(state.state));
+              copy.desc =
+                  state.desc + (state.desc.isEmpty ? '(1-ρ$i)' : '*(1-ρ$i)');
+              state.desc += state.desc.isEmpty ? 'ρ$i' : '*ρ$i';
+              bool fl = true;
+              for (var childId in data.nodes[i].childrenId) {
+                if (data.isChannel(childId) && state.state[childId] == 0) {
+                  fl = false;
+                  copy.state[childId] = 1;
+                  copy.state[i] = 0;
+                  generatedStates.add(copy);
+                  break;
+                } else if (!data.isChannel(childId) &&
+                    state.state[childId] < data.nodes[childId].val.round()) {
+                  fl = false;
+                  incrementQueue(copy.state, childId, data);
+                  copy.state[i] = 0;
+                  generatedStates.add(copy);
+                  break;
+                }
+              }
+
+              if (fl) {
+                if (data.nodes[i].childrenId.isNotEmpty) {
+                  copy.state[i] = data.isBlock(i) ? 1 : 0;
+                } else {
+                  copy.state[i] = 0;
+                }
+                generatedStates.add(copy);
+              }
+            }
+          } else if(initState[i] == 1) {
+            for (var state in states) {
+              bool fl = true;
+              for (var childId in data.nodes[i].childrenId) {
+                if (data.isChannel(childId) && state.state[childId] == 0) {
+                  fl = false;
+                  state.state[childId] = 1;
+                  state.state[i] = 0;
+                  break;
+                } else if (!data.isChannel(childId) &&
+                    state.state[childId] < data.nodes[childId].val.round()) {
+                  fl = false;
+                  incrementQueue(state.state, childId, data);
+                  state.state[i] = 0;
+                  break;
+                }
+              }
+
+              if (fl) {
+                state.state[i] = data.isBlock(i) ? 1 : 0;
+              }
+            }
+          }
           break;
       }
       states.addAll(generatedStates);
