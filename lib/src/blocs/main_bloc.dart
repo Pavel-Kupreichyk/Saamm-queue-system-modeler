@@ -7,12 +7,11 @@ enum InfluenceType { block, error }
 
 class Node {
   List<int> childrenId = [];
-  final int id;
   double val;
   int parentId;
   NodeType type;
   InfluenceType influenceType;
-  Node(this.id, this.val, this.parentId, this.type, this.influenceType);
+  Node(this.val, this.parentId, this.type, this.influenceType);
 }
 
 class ResultData {
@@ -36,21 +35,22 @@ class ResultData {
 
 class MainBloc implements Disposable {
   BehaviorSubject<List<Node>> _nodes = BehaviorSubject.seeded([
-    Node(0, 2, null, NodeType.periodicSource, InfluenceType.block),
-    Node(1, 0.5, 0, NodeType.channel, InfluenceType.block),
-    Node(2, 0.5, 1, NodeType.channel, InfluenceType.block),
-    Node(3, 0.5, 2, NodeType.channel, InfluenceType.block),
+    Node(2, null, NodeType.periodicSource, InfluenceType.block),
+    Node(0.5, 0, NodeType.channel, InfluenceType.block),
+    Node(0.5, 1, NodeType.channel, InfluenceType.block),
+    Node(0.5, 2, NodeType.channel, InfluenceType.block),
   ]);
   BehaviorSubject<int> _currStep = BehaviorSubject.seeded(0);
   PublishSubject<NavigationInfo> _navigate = PublishSubject();
 
   Observable<NavigationInfo> get navigate => _navigate;
-
+  Observable<int> get countOfNodes =>
+      _nodes.stream.map((val) => val.length).distinct();
   Observable<int> get currStep => _currStep;
   Observable<List<Node>> get workers => _nodes;
 
   incrementStep(int step) {
-    if (step != 3) {
+    if (step != _nodes.value.length - 1) {
       _currStep.add(step + 1);
     } else {
       final nodes = _nodes.value;
@@ -66,6 +66,10 @@ class MainBloc implements Disposable {
     if (step != 0) {
       _currStep.add(step - 1);
     }
+  }
+
+  selectStep(int step) {
+    _currStep.add(step);
   }
 
   changeSource(NodeType sourceType) {
@@ -118,6 +122,24 @@ class MainBloc implements Disposable {
     var nodes = _nodes.value;
     nodes[stepId].parentId = parent;
     _nodes.add(nodes);
+  }
+
+  changeNodesCount(int newCount) {
+    var nodes = _nodes.value;
+
+    if (newCount < nodes.length) {
+      if (_currStep.value > newCount - 1) {
+        _currStep.add(newCount - 1);
+      }
+      _nodes.add(nodes.getRange(0, newCount).toList());
+    } else if (newCount > nodes.length) {
+      final range = newCount - nodes.length;
+      for (int i = 0; i < range; i++) {
+        nodes.add(
+            Node(0.5, nodes.length - 1, NodeType.channel, InfluenceType.block));
+        _nodes.add(nodes);
+      }
+    }
   }
 
   @override

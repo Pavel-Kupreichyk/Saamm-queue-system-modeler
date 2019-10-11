@@ -30,127 +30,203 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends StateWithBag<MainScreen> {
+  int _prevLength = 0;
+  Key stepperKey = UniqueKey();
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<int>(
-      stream: widget.bloc.currStep,
-      builder: (_, snapshot) {
-        final currStep = snapshot.data ?? 0;
-        return Stepper(
-          currentStep: currStep,
-          steps: <Step>[
-            Step(
-              title: Text('Select Source'),
-              content: StreamBuilder<List<Node>>(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(top: 40.0, left: 25),
+          child: Text(
+            'Nodes count selection',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        StreamBuilder<int>(
+          stream: widget.bloc.countOfNodes,
+          builder: (_, snapshot) {
+            if (!snapshot.hasData) {
+              return Container();
+            }
+            final data = snapshot.data;
+            return Slider(
+              value: data.toDouble(),
+              min: 1,
+              max: 7,
+              divisions: 6,
+              onChanged: (val) => widget.bloc.changeNodesCount(val.round()),
+              label: 'nodes: ${data.round()}',
+            );
+          },
+        ),
+        StreamBuilder<int>(
+          stream: widget.bloc.currStep,
+          builder: (_, snapshot) {
+            final currStep = snapshot.data ?? 0;
+            return StreamBuilder<List<Node>>(
                 stream: widget.bloc.workers,
                 builder: (_, snapshot) {
                   if (!snapshot.hasData) {
                     return Container();
                   }
-                  final infType = snapshot.data[0].influenceType;
-                  final type = snapshot.data[0].type;
-                  final data = snapshot.data[0].val;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          _createNodeTypeRadio(
-                              NodeType.periodicSource, 'Periodic', type, 0),
-                          _createNodeTypeRadio(
-                              NodeType.randomSource, 'Random', type, 0),
-                        ],
+                  final nodes = snapshot.data;
+                  if (_prevLength != nodes.length) {
+                    stepperKey = UniqueKey();
+                    _prevLength = nodes.length;
+                  }
+                  List<Step> stepList = [
+                    Step(
+                        title: Text(
+                          'Select Source',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        content: createSource(nodes))
+                  ];
+
+                  for (int i = 1; i < nodes.length; i++) {
+                    stepList.add(
+                      Step(
+                        title: Text(
+                          'Select channel or queue',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        content: createWorker(i, nodes),
                       ),
-                      Row(
-                        children: <Widget>[
-                          _createInfluenceTypeRadio(
-                              InfluenceType.block, 'Block', infType, 0),
-                          _createInfluenceTypeRadio(
-                              InfluenceType.error, 'Error', infType, 0),
-                        ],
-                      ),
-                      Slider(
-                        value: data,
-                        min: type == NodeType.periodicSource ? 1 : 0.01,
-                        max: type == NodeType.periodicSource ? 10 : 1,
-                        divisions: type == NodeType.periodicSource ? 9 : 99,
-                        onChanged: (val) => widget.bloc.setWorkNodeVal(val, 0),
-                        label: type == NodeType.periodicSource
-                            ? 'period: ${data.toInt()}'
-                            : 'r: ${data.toStringAsFixed(2)}',
-                      ),
-                    ],
+                    );
+                  }
+
+                  return Expanded(
+                    child: Stepper(
+                      key: stepperKey,
+                      currentStep: currStep,
+                      steps: stepList,
+                      onStepContinue: () => widget.bloc.incrementStep(currStep),
+                      onStepCancel: () => widget.bloc.decrementStep(currStep),
+                      onStepTapped: widget.bloc.selectStep,
+                      controlsBuilder: (_,
+                          {VoidCallback onStepContinue,
+                          VoidCallback onStepCancel}) {
+                        var nextStepDesc = currStep == nodes.length - 1
+                            ? 'Calculate'
+                            : 'Next node';
+                        return Row(
+                          children: <Widget>[
+                            MaterialButton(
+                              child: Text(
+                                nextStepDesc,
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              onPressed: onStepContinue,
+                              color: Colors.blue,
+                            ),
+                            SizedBox(
+                              width: 20,
+                            ),
+                            currStep != 0
+                                ? MaterialButton(
+                                    child: Text('Previous node',
+                                        style: TextStyle(color: Colors.white)),
+                                    onPressed: onStepCancel,
+                                    color: Colors.grey,
+                                  )
+                                : Container(),
+                          ],
+                        );
+                      },
+                    ),
                   );
-                },
-              ),
-            ),
-            Step(title: Text('Select channel or queue'), content: createWorker(1)),
-            Step(title: Text('Select channel or queue'), content: createWorker(2)),
-            Step(title: Text('Select channel or queue'), content: createWorker(3)),
-          ],
-          onStepContinue: () => widget.bloc.incrementStep(currStep),
-          onStepCancel: () => widget.bloc.decrementStep(currStep),
-        );
-      },
+                });
+          },
+        ),
+      ],
     );
   }
 
-  Widget createWorker(int workerNum) {
-    return StreamBuilder<List<Node>>(
-      stream: widget.bloc.workers,
-      builder: (_, snapshot) {
-        if (!snapshot.hasData) {
-          return Container();
-        }
-        final type = snapshot.data[workerNum].type;
-        final infType = snapshot.data[workerNum].influenceType;
-        final data = snapshot.data[workerNum].val;
-        final parent = snapshot.data[workerNum].parentId;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget createWorker(int workerNum, List<Node> nodes) {
+    final type = nodes[workerNum].type;
+    final infType = nodes[workerNum].influenceType;
+    final data = nodes[workerNum].val;
+    final parent = nodes[workerNum].parentId;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                _createNodeTypeRadio(
-                    NodeType.channel, 'Channel', type, workerNum),
-                _createNodeTypeRadio(NodeType.queue, 'Queue', type, workerNum),
-              ],
-            ),
-            type == NodeType.channel ? Row(
-              children: <Widget>[
-                _createInfluenceTypeRadio(
-                    InfluenceType.block, 'Block', infType, workerNum),
-                _createInfluenceTypeRadio(
-                    InfluenceType.error, 'Error', infType, workerNum),
-              ],
-            ) : Container(),
-            Slider(
-              value: data,
-              min: type == NodeType.queue ? 1 : 0.01,
-              max: type == NodeType.queue ? 10 : 1,
-              divisions: type == NodeType.queue ? 9 : 99,
-              onChanged: (val) => widget.bloc.setWorkNodeVal(val, workerNum),
-              label: type == NodeType.queue
-                  ? 'queue: ${data.toInt()}'
-                  : 'channel: ${data.toStringAsFixed(2)}',
-            ),
-            SizedBox(
-              width: 200,
-              child: workerNum != 1
-                  ? Slider(
-                      value: parent.toDouble(),
-                      min: 0,
-                      max: (workerNum-1).toDouble(),
-                      divisions: workerNum-1,
-                      onChanged: (val) =>
-                          widget.bloc.setParentNode(val.round(), workerNum),
-                      label: 'parent: ${parent + 1}',
-                    )
-                  : Text('Child of source'),
-            ),
+            _createNodeTypeRadio(NodeType.channel, 'Channel', type, workerNum),
+            _createNodeTypeRadio(NodeType.queue, 'Queue', type, workerNum),
           ],
-        );
-      },
+        ),
+        type == NodeType.channel
+            ? Row(
+                children: <Widget>[
+                  _createInfluenceTypeRadio(
+                      InfluenceType.block, 'Block', infType, workerNum),
+                  _createInfluenceTypeRadio(
+                      InfluenceType.error, 'Error', infType, workerNum),
+                ],
+              )
+            : Container(),
+        Slider(
+          value: data,
+          min: type == NodeType.queue ? 1 : 0.01,
+          max: type == NodeType.queue ? 10 : 1,
+          divisions: type == NodeType.queue ? 9 : 99,
+          onChanged: (val) => widget.bloc.setWorkNodeVal(val, workerNum),
+          label: type == NodeType.queue
+              ? 'size: ${data.round()}'
+              : 'П: ${data.toStringAsFixed(2)}',
+        ),
+        SizedBox(
+          width: 200,
+          child: workerNum != 1
+              ? Slider(
+                  value: parent.toDouble(),
+                  min: 0,
+                  max: (workerNum - 1).toDouble(),
+                  divisions: workerNum - 1,
+                  onChanged: (val) =>
+                      widget.bloc.setParentNode(val.round(), workerNum),
+                  label: 'parent: ${parent + 1}',
+                )
+              : Text('Child of source'),
+        ),
+      ],
+    );
+  }
+
+  Widget createSource(List<Node> nodes) {
+    final infType = nodes[0].influenceType;
+    final type = nodes[0].type;
+    final data = nodes[0].val;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            _createNodeTypeRadio(NodeType.periodicSource, 'Periodic', type, 0),
+            _createNodeTypeRadio(NodeType.randomSource, 'Random', type, 0),
+          ],
+        ),
+        Row(
+          children: <Widget>[
+            _createInfluenceTypeRadio(InfluenceType.block, 'Block', infType, 0),
+            _createInfluenceTypeRadio(InfluenceType.error, 'Error', infType, 0),
+          ],
+        ),
+        Slider(
+          value: data,
+          min: type == NodeType.periodicSource ? 1 : 0.01,
+          max: type == NodeType.periodicSource ? 10 : 1,
+          divisions: type == NodeType.periodicSource ? 9 : 99,
+          onChanged: (val) => widget.bloc.setWorkNodeVal(val, 0),
+          label: type == NodeType.periodicSource
+              ? 'period: ${data.round()}'
+              : 'ρ: ${data.toStringAsFixed(2)}',
+        ),
+      ],
     );
   }
 

@@ -48,9 +48,7 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
         var dataSource = CustomDataSource(info);
 
         List<DataColumn> columns = info
-            .map((val) => DataColumn(
-                label: Text(
-                    '${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}')))
+            .map((val) => DataColumn(label: Text(val.state.join())))
             .toList();
         columns.insert(0, DataColumn(label: Text('State')));
         columns.add(DataColumn(label: Text('State')));
@@ -61,7 +59,7 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
               children: <Widget>[
                 PaginatedDataTable(
                   header: const Text('State graph'),
-                  rowsPerPage: snapshot.data.length+1,
+                  rowsPerPage: snapshot.data.length + 1,
                   columns: columns,
                   source: dataSource,
                   columnSpacing: 10,
@@ -99,9 +97,7 @@ class CustomDataSource extends DataTableSource {
     List<DataCell> cells = [infoCell];
 
     for (int i = 0; i < results.length; i++) {
-      var val = results[i];
-      cells.add(DataCell(Text(
-          '${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}')));
+      cells.add(DataCell(Text(results[i].state.join())));
     }
     cells.add(infoCell);
     return cells;
@@ -110,22 +106,25 @@ class CustomDataSource extends DataTableSource {
   List<DataCell> createRegularListOfCells(int index) {
     var val = results[index];
     var infoCell = DataCell(
-        Text('${val.state[0]}${val.state[1]}${val.state[2]}${val.state[3]}'));
+        Text(val.state.join()));
     List<DataCell> cells = [infoCell];
 
     for (int i = 0; i < results.length; i++) {
       var desc = '';
       for (var child in val.childStates) {
         if (compareStates(child.state, results[i].state)) {
-          if(desc.isEmpty) {
+          if (desc.isEmpty) {
             desc = child.desc.isNotEmpty ? child.desc : '1';
           } else {
-            desc += ' | ' + (child.desc.isNotEmpty ? child.desc : '1');
+            desc += ' +\n' + (child.desc.isNotEmpty ? child.desc : '1');
           }
         }
       }
       desc = desc.isEmpty ? '-' : desc;
-      cells.add(DataCell(Text(desc, style: TextStyle(fontWeight: FontWeight.bold),)));
+      cells.add(DataCell(Text(
+        desc,
+        style: TextStyle(fontWeight: FontWeight.bold),
+      )));
     }
     cells.add(infoCell);
     return cells;
