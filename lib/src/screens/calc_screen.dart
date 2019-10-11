@@ -82,8 +82,9 @@ class CustomDataSource extends DataTableSource {
   @override
   DataRow getRow(int index) {
     List<DataCell> cells = [];
-    if(index < results.rows.length) {
-      results.rows[index].forEach((val) => cells.add(DataCell(Text(val))));
+    if (index < results.rows.length) {
+      results.rows[index].forEach((val) => cells.add(
+          DataCell(Text(val, style: TextStyle(fontWeight: FontWeight.bold)))));
     } else {
       results.desc.forEach((val) => cells.add(DataCell(Text(val))));
     }
