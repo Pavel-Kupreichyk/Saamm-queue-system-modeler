@@ -47,9 +47,11 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
         var info = snapshot.data;
         var dataSource = CustomDataSource(info);
 
-        List<DataColumn> columns = info
-            .map((val) => DataColumn(label: Text(val.state.join())))
-            .toList();
+        List<DataColumn> columns = info.map((val) {
+          var str = '';
+          val.state.forEach((v) => str += v != -1 ? v.toString() : 'B');
+          return DataColumn(label: Text(str));
+        }).toList();
         columns.insert(0, DataColumn(label: Text('State')));
         columns.add(DataColumn(label: Text('State')));
         return SafeArea(
@@ -97,7 +99,9 @@ class CustomDataSource extends DataTableSource {
     List<DataCell> cells = [infoCell];
 
     for (int i = 0; i < results.length; i++) {
-      cells.add(DataCell(Text(results[i].state.join())));
+      var str = '';
+      results[i].state.forEach((v) => str += v != -1 ? v.toString() : 'B');
+      cells.add(DataCell(Text(str)));
     }
     cells.add(infoCell);
     return cells;
@@ -105,8 +109,9 @@ class CustomDataSource extends DataTableSource {
 
   List<DataCell> createRegularListOfCells(int index) {
     var val = results[index];
-    var infoCell = DataCell(
-        Text(val.state.join()));
+    var str = '';
+    val.state.forEach((v) => str += v != -1 ? v.toString() : 'B');
+    var infoCell = DataCell(Text(str));
     List<DataCell> cells = [infoCell];
 
     for (int i = 0; i < results.length; i++) {
