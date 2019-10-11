@@ -109,7 +109,7 @@ class CalcBloc implements Disposable {
           if (initState[i] > 0) {
             for (var state in states) {
               for (var childId in data.nodes[i].childrenId) {
-                if(state.state[i] == 0) {
+                if (state.state[i] == 0) {
                   break;
                 }
                 if (data.isChannel(childId) && state.state[childId] == 0) {
@@ -187,7 +187,7 @@ class CalcBloc implements Disposable {
                 generatedStates.add(copy);
               }
             }
-          } else if(initState[i] == 1) {
+          } else if (initState[i] == 1) {
             for (var state in states) {
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
@@ -237,6 +237,52 @@ class CalcBloc implements Disposable {
     state[queueId] = data.nodes[queueId].childrenId.isNotEmpty ? 1 : 0;
     return state;
   }
+
+  //TABLE DATA CREATION
+  static List<List<String>> createTable(List<StateInfo> data) {
+    List<List<String>> result = [];
+    for (int i = 0; i < data.length; i++) {
+      result.add(i != data.length
+          ? createRegularListOfCells(i, data)
+          : createInfoListOfCells(data));
+    }
+    return result;
+  }
+
+  static List<String> createInfoListOfCells(List<StateInfo> data) {
+    List<String> cells = ['State'];
+
+    for (int i = 0; i < data.length; i++) {
+      cells.add(data[i].state.join());
+    }
+    cells.add('State');
+    return cells;
+  }
+
+  static List<String> createRegularListOfCells(
+      int index, List<StateInfo> data) {
+    var val = data[index];
+    var info = val.state.join();
+    List<String> cells = [info];
+
+    for (int i = 0; i < data.length; i++) {
+      var desc = '';
+      for (var child in val.childStates) {
+        if (compareStates(child.state, data[i].state)) {
+          if (desc.isEmpty) {
+            desc = child.desc.isNotEmpty ? child.desc : '1';
+          } else {
+            desc += ' +\n' + (child.desc.isNotEmpty ? child.desc : '1');
+          }
+        }
+      }
+      desc = desc.isEmpty ? '-' : desc;
+      cells.add(desc);
+    }
+    cells.add(info);
+    return cells;
+  }
+  //TABLE DATA CREATION
 
   bool randomBool(double trueProbability) {
     return random.nextDouble() < trueProbability;
