@@ -1,8 +1,9 @@
-enum ScreenType { main, calc }
+enum ScreenType { main, calc, data }
 
 class NavigationInfo {
   static const mainRoute = '/';
   static const calcRoute = '/calc';
+  static const dataRoute = '/data';
 
   final ScreenType screen;
   final Object args;
@@ -13,6 +14,8 @@ class NavigationInfo {
         return mainRoute;
       case ScreenType.calc:
         return calcRoute;
+      case ScreenType.data:
+        return dataRoute;
     }
     return null;
   }

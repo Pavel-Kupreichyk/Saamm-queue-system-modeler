@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_saimmod_3/src/blocs/main_bloc.dart';
+import 'package:flutter_saimmod_3/src/screens/navigation_info.dart';
 import 'package:flutter_saimmod_3/src/support_classes/disposable.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -14,13 +15,33 @@ class StateInfo {
 class StateData {
   List<int> state;
   String desc = '';
+  double value = 1;
+  bool isFinal = false;
   StateData(this.state);
+}
+
+class StateDescription {
+  Map<String, List<StateVal>> values = {};
+  List<StateVal> aVal = [];
+
+  StateDescription(List<String> data) {
+    for (var val in data) {
+      values[val] = [];
+    }
+  }
+}
+
+class StateVal {
+  final String state;
+  final double val;
+
+  StateVal(this.val, this.state);
 }
 
 class TableInfo {
   final List<List<String>> rows;
   final List<String> desc;
-  TableInfo(this.desc,this.rows);
+  TableInfo(this.desc, this.rows);
 }
 
 class CalcBloc implements Disposable {
@@ -28,15 +49,25 @@ class CalcBloc implements Disposable {
   Random random = Random();
   BehaviorSubject<TableInfo> _allPossibleStates = BehaviorSubject();
   Observable<TableInfo> get allPossibleStates => _allPossibleStates;
+  PublishSubject<NavigationInfo> _navigate = PublishSubject();
+  Observable<NavigationInfo> get navigate => _navigate;
+  StateDescription listOfDesc;
 
   CalcBloc(this.data) {
     emitStates();
+  }
+
+  showData() {
+    if (listOfDesc != null) {
+      _navigate.add(NavigationInfo(ScreenType.data, args: listOfDesc));
+    }
   }
 
   emitStates() async {
     var stateData = await compute(getAllStates, data);
     var result = await compute(createTable, stateData);
     _allPossibleStates.add(result);
+    listOfDesc = await compute(createDesc, stateData);
   }
 
   static List<StateInfo> getAllStates(ResultData data) {
@@ -82,7 +113,9 @@ class CalcBloc implements Disposable {
               var copy = StateData(List<int>.from(state.state));
               copy.desc =
                   state.desc + (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)');
+              copy.value *= (1 - data.nodes[i].val);
               state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
+              state.value *= data.nodes[i].val;
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
@@ -105,6 +138,7 @@ class CalcBloc implements Disposable {
                 if (data.nodes[i].childrenId.isNotEmpty) {
                   copy.state[i] = data.isBlock(i) ? -1 : 0;
                 } else {
+                  copy.isFinal = true;
                   copy.state[i] = 0;
                 }
                 generatedStates.add(copy);
@@ -188,7 +222,9 @@ class CalcBloc implements Disposable {
               var copy = StateData(List<int>.from(state.state));
               copy.desc =
                   state.desc + (state.desc.isEmpty ? '(1-ρ$i)' : '*(1-ρ$i)');
+              copy.value *= (1 - data.nodes[i].val);
               state.desc += state.desc.isEmpty ? 'ρ$i' : '*ρ$i';
+              state.value *= data.nodes[i].val;
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
@@ -211,6 +247,7 @@ class CalcBloc implements Disposable {
                 if (data.nodes[i].childrenId.isNotEmpty) {
                   copy.state[i] = data.isBlock(i) ? 1 : 0;
                 } else {
+                  copy.isFinal = true;
                   copy.state[i] = 0;
                 }
                 generatedStates.add(copy);
@@ -267,13 +304,30 @@ class CalcBloc implements Disposable {
     return state;
   }
 
+  static StateDescription createDesc(List<StateInfo> data) {
+    StateDescription result = StateDescription(
+        data.map((val) => createStateDesc(val.state)).toList());
+    for (int i = 0; i < data.length; i++) {
+      for (int j = 0; j < data[i].childStates.length; j++) {
+        result.values[createStateDesc(data[i].childStates[j].state)].add(
+            StateVal(
+                data[i].childStates[j].value, createStateDesc(data[i].state)));
+        if (data[i].childStates[j].isFinal) {
+          result.aVal.add(StateVal(data[i].childStates[j].value,
+              createStateDesc(data[i].state)));
+        }
+      }
+    }
+    return result;
+  }
+
   //TABLE DATA CREATION
   static TableInfo createTable(List<StateInfo> data) {
     List<List<String>> result = [];
     for (int i = 0; i < data.length; i++) {
       result.add(createRegularListOfCells(i, data));
     }
-    return TableInfo(createInfoListOfCells(data),result);
+    return TableInfo(createInfoListOfCells(data), result);
   }
 
   static List<String> createInfoListOfCells(List<StateInfo> data) {
@@ -323,5 +377,7 @@ class CalcBloc implements Disposable {
   }
 
   @override
-  void dispose() {}
+  void dispose() {
+    _allPossibleStates.close();
+  }
 }

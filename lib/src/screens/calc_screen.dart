@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter_saimmod_3/src/blocs/calc_bloc.dart';
 import 'package:flutter_saimmod_3/src/blocs/main_bloc.dart';
 import 'package:flutter_saimmod_3/src/support_classes/state_with_bag.dart';
@@ -19,6 +17,15 @@ class CalcScreenBuilder extends StatelessWidget {
         builder: (_, bloc, __) => Scaffold(
           appBar: AppBar(
             title: Text('Calculations'),
+            actions: <Widget>[
+              FlatButton(
+                child: Text(
+                  'Show more data',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onPressed: bloc.showData,
+              )
+            ],
           ),
           body: CalcScreen(bloc),
         ),
@@ -38,20 +45,20 @@ class CalcScreen extends StatefulWidget {
 class _CalcScreenState extends StateWithBag<CalcScreen> {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<TableInfo>(
-      stream: widget.bloc.allPossibleStates,
-      builder: (_, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
-        }
-        var info = snapshot.data;
-        var dataSource = CustomDataSource(info);
+    return SafeArea(
+      bottom: false,
+      child: StreamBuilder<TableInfo>(
+        stream: widget.bloc.allPossibleStates,
+        builder: (_, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+          var info = snapshot.data;
+          var dataSource = CustomDataSource(info);
 
-        List<DataColumn> columns =
-            info.desc.map((val) => DataColumn(label: Text(val))).toList();
-        return SafeArea(
-          bottom: false,
-          child: Scrollbar(
+          List<DataColumn> columns =
+              info.desc.map((val) => DataColumn(label: Text(val))).toList();
+          return Scrollbar(
             child: ListView(
               children: <Widget>[
                 PaginatedDataTable(
@@ -63,15 +70,17 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
                 ),
               ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   @override
   void setupBindings() {
-    // TODO: implement setupBindings
+    bag += widget.bloc.navigate.listen((navInfo) async {
+      Navigator.pushNamed(context, navInfo.getRoute(), arguments: navInfo.args);
+    });
   }
 }
 

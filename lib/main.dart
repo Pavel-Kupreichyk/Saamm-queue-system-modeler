@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_saimmod_3/src/screens/calc_screen.dart';
+import 'package:flutter_saimmod_3/src/screens/data_screen.dart';
 import 'package:flutter_saimmod_3/src/screens/main_screen.dart';
 import 'package:flutter_saimmod_3/src/screens/navigation_info.dart';
 
@@ -19,6 +20,9 @@ class MyApp extends StatelessWidget {
     switch (settings.name) {
       case NavigationInfo.calcRoute:
         newScreen = CalcScreenBuilder(settings.arguments);
+        break;
+      case NavigationInfo.dataRoute:
+        newScreen = DataScreenBuilder(settings.arguments);
         break;
       default:
         throw Exception('Invalid route: ${settings.name}');
