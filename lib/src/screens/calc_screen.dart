@@ -16,14 +16,21 @@ class CalcScreenBuilder extends StatelessWidget {
       child: Consumer<CalcBloc>(
         builder: (_, bloc, __) => Scaffold(
           appBar: AppBar(
-            title: Text('Calculations'),
+            title: Text('Graph'),
             actions: <Widget>[
               FlatButton(
                 child: Text(
-                  'Show more data',
+                  'Equations system',
                   style: TextStyle(color: Colors.white),
                 ),
                 onPressed: bloc.showData,
+              ),
+              FlatButton(
+                child: Text(
+                  'Simulate',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onPressed: bloc.simulate,
               )
             ],
           ),

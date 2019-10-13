@@ -3,6 +3,7 @@ import 'package:flutter_saimmod_3/src/screens/calc_screen.dart';
 import 'package:flutter_saimmod_3/src/screens/data_screen.dart';
 import 'package:flutter_saimmod_3/src/screens/main_screen.dart';
 import 'package:flutter_saimmod_3/src/screens/navigation_info.dart';
+import 'package:flutter_saimmod_3/src/screens/simulate_screen.dart';
 
 void main() => runApp(MyApp());
 
@@ -23,6 +24,9 @@ class MyApp extends StatelessWidget {
         break;
       case NavigationInfo.dataRoute:
         newScreen = DataScreenBuilder(settings.arguments);
+        break;
+      case NavigationInfo.simRoute:
+        newScreen = SimulateScreenBuilder(settings.arguments);
         break;
       default:
         throw Exception('Invalid route: ${settings.name}');
