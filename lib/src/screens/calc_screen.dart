@@ -54,7 +54,7 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       bottom: false,
-      child: StreamBuilder<TableInfo>(
+      child: StreamBuilder<StatesTableInfo>(
         stream: widget.bloc.allPossibleStates,
         builder: (_, snapshot) {
           if (!snapshot.hasData) {
@@ -92,7 +92,7 @@ class _CalcScreenState extends StateWithBag<CalcScreen> {
 }
 
 class CustomDataSource extends DataTableSource {
-  final TableInfo results;
+  final StatesTableInfo results;
   CustomDataSource(this.results);
 
   @override

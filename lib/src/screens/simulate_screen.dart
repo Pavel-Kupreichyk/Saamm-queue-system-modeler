@@ -42,11 +42,11 @@ class _SimulateScreenState extends StateWithBag<SimulateScreen> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: <Widget>[
-          StreamBuilder<Results>(
+          StreamBuilder<SimulationResults>(
             stream: widget.bloc.results,
             builder: (_, snapshot) {
               if (!snapshot.hasData) {
-                return Container();
+                return Center(child: CircularProgressIndicator());
               }
 
               return Padding(

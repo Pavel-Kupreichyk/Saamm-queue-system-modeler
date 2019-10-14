@@ -47,38 +47,51 @@ class _DataScreenState extends StateWithBag<DataScreen> {
               if (!snapshot.hasData) {
                 return Container();
               }
-              List<Widget> widgets = [];
-              for (var key in snapshot.data.values.keys) {
-                var val = snapshot.data.values[key];
-                if (val.isEmpty) {
-                  continue;
-                }
-                List<Widget> rowData = [];
-                rowData.add(Text('P'));
-                rowData.add(Text(key, style: TextStyle(fontSize: 8)));
-                rowData.add(Text(' = '));
-                var i = 0;
-                for (var v in val) {
-                  i++;
-                  rowData.add(Text(v.val.toStringAsFixed(2)));
-                  rowData.add(Text('P'));
-                  rowData.add(Text(v.state, style: TextStyle(fontSize: 8)));
-                  if (i != val.length) {
-                    rowData.add(Text(' + '));
-                  }
-                }
-                widgets.add(Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: rowData));
-              }
-              return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: widgets);
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _createColumnData(snapshot.data)),
+              );
             },
           ),
         ],
       ),
     );
+  }
+
+  List<Widget> _createColumnData(StateDescription desc) {
+    List<Widget> widgets = [];
+    widgets.add(Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        Text('Σ', style: TextStyle(fontSize: 20)),
+        Text('P = 1')
+      ],
+    ));
+    for (var key in desc.values.keys) {
+      var values = desc.values[key];
+      List<Widget> rowData = [];
+      rowData.add(Text('P'));
+      rowData.add(Text(key, style: TextStyle(fontSize: 8)));
+      rowData.add(Text(' = '));
+      if (values.isNotEmpty) {
+        for (int i = 0; i < values.length; i++) {
+          rowData.add(Text(values[i].val.toStringAsFixed(2)));
+          rowData.add(Text('P'));
+          rowData.add(Text(values[i].state, style: TextStyle(fontSize: 8)));
+          if (i != values.length - 1) {
+            rowData.add(Text(' + '));
+          }
+        }
+      } else {
+        rowData.add(Text('0'));
+      }
+
+      widgets.add(
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: rowData));
+    }
+    return widgets;
   }
 
   @override
