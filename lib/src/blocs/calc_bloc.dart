@@ -13,11 +13,24 @@ class StateInfo {
 
 class StateTransitionData {
   List<int> state;
+  List<int> emittedByNode;
   String desc = '';
   double value = 1;
   bool isNewGenerated = false;
   int finalEmit = 0;
-  StateTransitionData(this.state);
+
+  StateTransitionData(this.state) {
+    emittedByNode = List.filled(state.length, 0);
+  }
+
+  StateTransitionData.copy(StateTransitionData from) {
+    state = List<int>.from(from.state);
+    emittedByNode = List<int>.from(from.emittedByNode);
+    isNewGenerated = from.isNewGenerated;
+    desc = from.desc;
+    value = from.value;
+    finalEmit = from.finalEmit;
+  }
 }
 
 class StateDescription {
@@ -124,18 +137,18 @@ class CalcBloc implements Disposable {
         case NodeType.channel:
           if (initState[i] == 1) {
             for (var state in states) {
-              var copy = StateTransitionData(List<int>.from(state.state));
-              copy.desc =
-                  state.desc + (state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)');
-              copy.value = state.value * (1 - data.nodes[i].val);
+              var copy = StateTransitionData.copy(state);
+              copy.desc += state.desc.isEmpty ? '(1-Π$i)' : '*(1-Π$i)';
+              copy.value *= 1 - data.nodes[i].val;
               state.desc += state.desc.isEmpty ? 'Π$i' : '*Π$i';
               state.value *= data.nodes[i].val;
-              copy.finalEmit = state.finalEmit;
+
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
                   copy.state[childId] = 1;
+                  copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
                   break;
@@ -143,6 +156,7 @@ class CalcBloc implements Disposable {
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
                   incrementQueue(copy, childId, data);
+                  copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
                   break;
@@ -154,6 +168,7 @@ class CalcBloc implements Disposable {
                   copy.state[i] = data.isBlock(i) ? -1 : 0;
                 } else {
                   copy.finalEmit++;
+                  copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                 }
                 generatedStates.add(copy);
@@ -166,12 +181,14 @@ class CalcBloc implements Disposable {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
                   state.state[childId] = 1;
+                  state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
                   incrementQueue(state, childId, data);
+                  state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 }
@@ -192,10 +209,12 @@ class CalcBloc implements Disposable {
                 }
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   state.state[childId] = 1;
+                  state.emittedByNode[i]++;
                   state.state[i]--;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   incrementQueue(state, childId, data);
+                  state.emittedByNode[i]++;
                   state.state[i]--;
                 }
               }
@@ -209,19 +228,22 @@ class CalcBloc implements Disposable {
             }
           } else if (initState[i] <= 1) {
             for (var state in states) {
+              if(initState[i] != 0) {
+                state.isNewGenerated = true;
+              }
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
-                  state.isNewGenerated = true;
                   state.state[childId] = 1;
+                  state.emittedByNode[i]++;
                   state.state[i] = data.source.val.round();
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
-                  state.isNewGenerated = true;
                   incrementQueue(state, childId, data);
+                  state.emittedByNode[i]++;
                   state.state[i] = data.source.val.round();
                   break;
                 }
@@ -233,6 +255,7 @@ class CalcBloc implements Disposable {
                       data.isBlock(i) ? 0 : data.source.val.round();
                 } else {
                   state.finalEmit++;
+                  state.emittedByNode[i]++;
                   state.state[i] = data.source.val.round();
                 }
               }
@@ -242,27 +265,27 @@ class CalcBloc implements Disposable {
         case NodeType.randomSource:
           if (initState[i] == 0) {
             for (var state in states) {
-              var copy = StateTransitionData(List<int>.from(state.state));
-              copy.desc =
-                  state.desc + (state.desc.isEmpty ? '(1-ρ$i)' : '*(1-ρ$i)');
-              copy.value = state.value * (1 - data.nodes[i].val);
+              var copy = StateTransitionData.copy(state);
+              copy.isNewGenerated = true;
+              copy.desc += state.desc.isEmpty ? '(1-ρ$i)' : '*(1-ρ$i)';
+              copy.value *= 1 - data.nodes[i].val;
               state.desc += state.desc.isEmpty ? 'ρ$i' : '*ρ$i';
               state.value *= data.nodes[i].val;
-              copy.finalEmit = state.finalEmit;
+
               bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
-                  copy.isNewGenerated = true;
                   copy.state[childId] = 1;
+                  copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
-                  copy.isNewGenerated = true;
                   incrementQueue(copy, childId, data);
+                  copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
                   break;
@@ -273,6 +296,7 @@ class CalcBloc implements Disposable {
                 if (data.nodes[i].childrenId.isNotEmpty) {
                   copy.state[i] = data.isBlock(i) ? 1 : 0;
                 } else {
+                  copy.emittedByNode[i]++;
                   copy.finalEmit++;
                   copy.state[i] = 0;
                 }
@@ -286,12 +310,14 @@ class CalcBloc implements Disposable {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
                   fl = false;
                   state.state[childId] = 1;
+                  state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
                   incrementQueue(state, childId, data);
+                  state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 }
@@ -306,6 +332,7 @@ class CalcBloc implements Disposable {
       }
       states.addAll(generatedStates);
     }
+    states.forEach((s)=>print('${createStateDesc(initState)} -> ${createStateDesc(s.state)}: ${createStateDesc(s.emittedByNode)}'));
     return states;
   }
 
