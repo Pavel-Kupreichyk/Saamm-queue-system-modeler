@@ -66,7 +66,7 @@ class CalcBloc implements Disposable {
   List<StateInfo> stateInfo;
 
   CalcBloc(this.data) {
-    emitStates();
+    _emitStates();
   }
 
   showData() {
@@ -81,21 +81,21 @@ class CalcBloc implements Disposable {
     }
   }
 
-  emitStates() async {
-    stateInfo = await compute(getAllStates, data);
-    var result = await compute(createTable, stateInfo);
+  _emitStates() async {
+    stateInfo = await compute(_getAllStates, data);
+    var result = await compute(_createTable, stateInfo);
     _allPossibleStates.add(result);
-    listOfDesc = await compute(createDesc, stateInfo);
+    listOfDesc = await compute(_createDesc, stateInfo);
   }
 
-  static List<StateInfo> getAllStates(ResultData data) {
-    List<StateInfo> infoList = [StateInfo(getFirstState(data))];
+  static List<StateInfo> _getAllStates(ResultData data) {
+    List<StateInfo> infoList = [StateInfo(_getFirstState(data))];
     for (int i = 0; i < infoList.length; i++) {
-      infoList[i].weightByGroup = getStateWeight(data, infoList[i].state);
+      infoList[i].weightByGroup = _getStateWeight(data, infoList[i].state);
       var states = _getPossibleStates(infoList[i].state, data);
       infoList[i].transitions = states;
       for (var state in states) {
-        if (!infoList.any((s) => compareStates(s.state, state.state))) {
+        if (!infoList.any((s) => _compareStates(s.state, state.state))) {
           infoList.add(StateInfo(state.state));
         }
       }
@@ -103,7 +103,7 @@ class CalcBloc implements Disposable {
     return infoList;
   }
 
-  static Map<int, int> getStateWeight(ResultData data, List<int> state) {
+  static Map<int, int> _getStateWeight(ResultData data, List<int> state) {
     Map<int, int> resMap = {};
     for (int i = 0; i < data.nodes.length; i++) {
       resMap[data.getGroup(i)] = 0;
@@ -114,7 +114,7 @@ class CalcBloc implements Disposable {
     return resMap;
   }
 
-  static compareStates(List<int> state1, List<int> state2) {
+  static _compareStates(List<int> state1, List<int> state2) {
     for (int i = 0; i < state1.length; i++) {
       if (state1[i] != state2[i]) {
         return false;
@@ -123,7 +123,7 @@ class CalcBloc implements Disposable {
     return true;
   }
 
-  static List<int> getFirstState(ResultData data) {
+  static List<int> _getFirstState(ResultData data) {
     List<int> state = List.filled(data.nodes.length, 0);
     state[0] = (data.isSourcePeriodic() ? data.source.val.round() : 0);
     return state;
@@ -158,7 +158,7 @@ class CalcBloc implements Disposable {
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
-                  incrementQueue(copy, childId, data);
+                  _incrementQueue(copy, childId, data);
                   copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
@@ -187,7 +187,7 @@ class CalcBloc implements Disposable {
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
-                  incrementQueue(state, childId, data);
+                  _incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
@@ -209,7 +209,7 @@ class CalcBloc implements Disposable {
                   state.state[i]--;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
-                  incrementQueue(state, childId, data);
+                  _incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i]--;
                 }
@@ -238,7 +238,7 @@ class CalcBloc implements Disposable {
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
-                  incrementQueue(state, childId, data);
+                  _incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i] = data.source.val.round();
                   break;
@@ -280,7 +280,7 @@ class CalcBloc implements Disposable {
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
                   fl = false;
-                  incrementQueue(copy, childId, data);
+                  _incrementQueue(copy, childId, data);
                   copy.emittedByNode[i]++;
                   copy.state[i] = 0;
                   generatedStates.add(copy);
@@ -309,7 +309,7 @@ class CalcBloc implements Disposable {
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
-                  incrementQueue(state, childId, data);
+                  _incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
@@ -324,7 +324,7 @@ class CalcBloc implements Disposable {
     return states;
   }
 
-  static incrementQueue(
+  static _incrementQueue(
       StateTransitionData state, int queueId, ResultData data) {
     if (state.state[queueId] > 0) {
       state.state[queueId]++;
@@ -338,7 +338,7 @@ class CalcBloc implements Disposable {
         return state;
       } else if (!data.isChannel(childId) &&
           state.state[childId] < data.nodes[childId].val.round()) {
-        incrementQueue(state, childId, data);
+        _incrementQueue(state, childId, data);
         state.emittedByNode[queueId]++;
       }
     }
@@ -351,24 +351,24 @@ class CalcBloc implements Disposable {
     }
   }
 
-  static StateDescription createDesc(List<StateInfo> data) {
+  static StateDescription _createDesc(List<StateInfo> data) {
     StateDescription result = StateDescription(
-        data.map((val) => createStateDesc(val.state)).toList());
+        data.map((val) => _createStateDesc(val.state)).toList());
     for (int i = 0; i < data.length; i++) {
       for (int j = 0; j < data[i].transitions.length; j++) {
-        result.values[createStateDesc(data[i].transitions[j].state)].add(
+        result.values[_createStateDesc(data[i].transitions[j].state)].add(
             StateVal(
-                data[i].transitions[j].value, createStateDesc(data[i].state)));
+                data[i].transitions[j].value, _createStateDesc(data[i].state)));
       }
     }
     return result;
   }
 
   ///TABLE DATA CREATION
-  static StatesTableInfo createTable(List<StateInfo> data) {
+  static StatesTableInfo _createTable(List<StateInfo> data) {
     List<List<String>> result = [];
     for (int i = 0; i < data.length; i++) {
-      result.add(createRegularListOfCells(i, data));
+      result.add(_createRegularListOfCells(i, data));
     }
     return StatesTableInfo(createInfoListOfCells(data), result);
   }
@@ -377,22 +377,22 @@ class CalcBloc implements Disposable {
     List<String> cells = ['State'];
 
     for (int i = 0; i < data.length; i++) {
-      cells.add(createStateDesc(data[i].state));
+      cells.add(_createStateDesc(data[i].state));
     }
     cells.add('State');
     return cells;
   }
 
-  static List<String> createRegularListOfCells(
+  static List<String> _createRegularListOfCells(
       int index, List<StateInfo> data) {
     var val = data[index];
-    var info = createStateDesc(val.state);
+    var info = _createStateDesc(val.state);
     List<String> cells = [info];
 
     for (int i = 0; i < data.length; i++) {
       var desc = '';
       for (var child in val.transitions) {
-        if (compareStates(child.state, data[i].state)) {
+        if (_compareStates(child.state, data[i].state)) {
           if (desc.isEmpty) {
             desc = child.desc.isNotEmpty ? child.desc : '1';
           } else {
@@ -407,7 +407,7 @@ class CalcBloc implements Disposable {
     return cells;
   }
 
-  static String createStateDesc(List<int> state) {
+  static String _createStateDesc(List<int> state) {
     var str = '';
     state.forEach((v) => str += v != -1 ? v.toString() : 'B');
     return str;

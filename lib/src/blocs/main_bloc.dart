@@ -53,20 +53,21 @@ class ResultData {
 }
 
 class MainBloc implements Disposable {
+
+  BehaviorSubject<int> _currStep = BehaviorSubject.seeded(0);
+  PublishSubject<NavigationInfo> _navigate = PublishSubject();
   BehaviorSubject<List<Node>> _nodes = BehaviorSubject.seeded([
     Node(2, null, NodeType.periodicSource, InfluenceType.block),
     Node(0.5, 0, NodeType.channel, InfluenceType.block),
     Node(0.5, 1, NodeType.channel, InfluenceType.block),
     Node(0.5, 2, NodeType.channel, InfluenceType.block),
   ]);
-  BehaviorSubject<int> _currStep = BehaviorSubject.seeded(0);
-  PublishSubject<NavigationInfo> _navigate = PublishSubject();
 
   Observable<NavigationInfo> get navigate => _navigate;
-  Observable<int> get countOfNodes =>
-      _nodes.stream.map((val) => val.length).distinct();
   Observable<int> get currStep => _currStep;
   Observable<List<Node>> get workers => _nodes;
+  Observable<int> get countOfNodes =>
+      _nodes.stream.map((val) => val.length).distinct();
 
   incrementStep(int step) {
     if (step != _nodes.value.length - 1) {

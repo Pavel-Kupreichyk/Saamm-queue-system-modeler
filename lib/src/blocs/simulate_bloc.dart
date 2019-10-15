@@ -36,24 +36,26 @@ class SimulateBloc implements Disposable {
   Observable<SimulationResults> get results => _results;
 
   SimulateBloc(List<StateInfo> data) {
-    createAndEmitData(data);
+    _createAndEmitData(data);
   }
 
-  createAndEmitData(List<StateInfo> data) async {
+  _createAndEmitData(List<StateInfo> data) async {
     var res = await compute(_simulate, data);
     _results.add(res);
   }
 
   static SimulationResults _simulate(List<StateInfo> data) {
     var random = Random();
+    var currState = data[0];
     Map<int, int> weightMap = {};
-    for (var key in data[0].weightByGroup.keys) {
+    for (var key in currState.weightByGroup.keys) {
       weightMap[key] = 0;
     }
-    List<int> sumProcessed = List<int>.filled(data[0].state.length, 0);
+    List<int> sumProcessed = List<int>.filled(currState.state.length, 0);
     var sumCalculated = 0;
     var sumGenerated = 0;
-    var currState = data[0];
+
+    //Simulation loop
     for (int i = 0; i < n; i++) {
       currState.weightByGroup.forEach((k, v) => weightMap[k] += v);
       var randomVal = random.nextDouble();
@@ -70,7 +72,7 @@ class SimulateBloc implements Disposable {
             currState.transitions[idOfNextState].emittedByNode[i];
       }
       for (var stateInfo in data) {
-        if (compareStates(
+        if (_compareStates(
             currState.transitions[idOfNextState].state, stateInfo.state)) {
           currState = stateInfo;
           break;
@@ -82,7 +84,7 @@ class SimulateBloc implements Disposable {
         n, sumGenerated, sumCalculated, sumProcessed, weightMap);
   }
 
-  static bool compareStates(List<int> state1, List<int> state2) {
+  static bool _compareStates(List<int> state1, List<int> state2) {
     for (int i = 0; i < state1.length; i++) {
       if (state1[i] != state2[i]) {
         return false;
