@@ -9,12 +9,13 @@ class SimulationResults {
   final int ticks;
   final int sumGenerated;
   final int sumCalculated;
+  final int stuckInSystem;
   final List<int> sumProcessed;
   final Map<int, int> weightMap;
 
   double get A => sumCalculated / ticks;
   double get L => weightMap.values.reduce((a, b) => a + b) / ticks;
-  double get lambda => sumGenerated / ticks;
+  double get lambda => (sumGenerated - stuckInSystem) / ticks;
   double get W => _calcW();
   double get Q => A / lambda;
   double get pError => 1 - Q;
@@ -27,7 +28,7 @@ class SimulationResults {
   }
 
   SimulationResults(this.ticks, this.sumGenerated, this.sumCalculated,
-      this.sumProcessed, this.weightMap);
+      this.sumProcessed, this.weightMap, this.stuckInSystem);
 }
 
 class SimulateBloc implements Disposable {
@@ -64,8 +65,8 @@ class SimulateBloc implements Disposable {
         randomVal -= currState.transitions[idOfNextState].value;
         idOfNextState++;
       }
-      sumGenerated +=
-          currState.transitions[idOfNextState].isNewGenerated ? 1 : 0;
+      sumGenerated += currState.transitions[idOfNextState].emittedByNode[0];
+      //currState.transitions[idOfNextState].isNewGenerated ? 1 : 0;
       sumCalculated += currState.transitions[idOfNextState].finalEmit;
       for (int i = 0; i < sumProcessed.length; i++) {
         sumProcessed[i] +=
@@ -79,9 +80,10 @@ class SimulateBloc implements Disposable {
         }
       }
     }
+    var stuckInSystem = currState.weightByGroup.values.reduce((a, b) => a + b);
 
     return SimulationResults(
-        n, sumGenerated, sumCalculated, sumProcessed, weightMap);
+        n, sumGenerated, sumCalculated, sumProcessed, weightMap, stuckInSystem);
   }
 
   static bool _compareStates(List<int> state1, List<int> state2) {
