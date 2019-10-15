@@ -17,6 +17,25 @@ class Node {
 class ResultData {
   final List<Node> nodes;
   Node get source => nodes[0];
+  final List<int> _groups;
+
+  int getGroup(int i) {
+    if (_groups[i] != null) {
+      return _groups[i];
+    } else {
+      var nodeInd = nodes[i].parentId;
+      while (_groups[i] == null) {
+        if (nodeInd == null) {
+          _groups[i] = -1;
+        } else if (nodes[nodeInd].influenceType == InfluenceType.error) {
+          _groups[i] = nodeInd;
+        } else {
+          nodeInd = nodes[nodeInd].parentId;
+        }
+      }
+      return _groups[i];
+    }
+  }
 
   bool isBlock(int i) {
     return nodes[i].influenceType == InfluenceType.block;
@@ -30,7 +49,7 @@ class ResultData {
     return nodes[i].type == NodeType.channel;
   }
 
-  ResultData(this.nodes);
+  ResultData(this.nodes) : _groups = List<int>.filled(nodes.length, null);
 }
 
 class MainBloc implements Disposable {

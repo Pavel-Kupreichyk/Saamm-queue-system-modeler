@@ -6,17 +6,32 @@ import 'package:flutter_saimmod_3/src/support_classes/disposable.dart';
 import 'package:rxdart/rxdart.dart';
 
 class SimulationResults {
-  final double A;
-  final double L;
-  final double lambda;
-  double get W => L/A;
-  double get Q => A/lambda;
+  final int ticks;
+  final int sumGenerated;
+  final int sumCalculated;
+  final List<int> sumProcessed;
+  final Map<int, int> weightMap;
+
+  double get A => sumCalculated / ticks;
+  double get L => weightMap.values.reduce((a, b) => a + b) / ticks;
+  double get lambda => sumGenerated / ticks;
+  double get W => _calcW();
+  double get Q => A / lambda;
   double get pError => 1 - Q;
-  SimulationResults(this.A, this.L, this.lambda);
+
+  double _calcW() {
+    double W = 0;
+    weightMap
+        .forEach((k, v) => W += v / (k != -1 ? sumProcessed[k] : sumGenerated));
+    return W;
+  }
+
+  SimulationResults(this.ticks, this.sumGenerated, this.sumCalculated,
+      this.sumProcessed, this.weightMap);
 }
 
 class SimulateBloc implements Disposable {
-  static const int n = 10000;
+  static const int n = 1000000;
   BehaviorSubject<SimulationResults> _results = BehaviorSubject();
   Observable<SimulationResults> get results => _results;
 
@@ -31,20 +46,29 @@ class SimulateBloc implements Disposable {
 
   static SimulationResults _simulate(List<StateInfo> data) {
     var random = Random();
-    var sumWeight = 0;
+    Map<int, int> weightMap = {};
+    for (var key in data[0].weightByGroup.keys) {
+      weightMap[key] = 0;
+    }
+    List<int> sumProcessed = List<int>.filled(data[0].state.length, 0);
     var sumCalculated = 0;
     var sumGenerated = 0;
     var currState = data[0];
     for (int i = 0; i < n; i++) {
-      sumWeight += currState.weight;
+      currState.weightByGroup.forEach((k, v) => weightMap[k] += v);
       var randomVal = random.nextDouble();
       var idOfNextState = 0;
       while (currState.transitions[idOfNextState].value < randomVal) {
         randomVal -= currState.transitions[idOfNextState].value;
         idOfNextState++;
       }
-      sumGenerated += currState.transitions[idOfNextState].isNewGenerated ? 1 : 0;
+      sumGenerated +=
+          currState.transitions[idOfNextState].isNewGenerated ? 1 : 0;
       sumCalculated += currState.transitions[idOfNextState].finalEmit;
+      for (int i = 0; i < sumProcessed.length; i++) {
+        sumProcessed[i] +=
+            currState.transitions[idOfNextState].emittedByNode[i];
+      }
       for (var stateInfo in data) {
         if (compareStates(
             currState.transitions[idOfNextState].state, stateInfo.state)) {
@@ -53,7 +77,9 @@ class SimulateBloc implements Disposable {
         }
       }
     }
-    return SimulationResults(sumCalculated/n,sumWeight/n,sumGenerated/n);
+
+    return SimulationResults(
+        n, sumGenerated, sumCalculated, sumProcessed, weightMap);
   }
 
   static bool compareStates(List<int> state1, List<int> state2) {

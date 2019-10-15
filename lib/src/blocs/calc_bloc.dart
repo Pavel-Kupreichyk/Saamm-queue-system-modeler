@@ -6,7 +6,7 @@ import 'package:rxdart/rxdart.dart';
 
 class StateInfo {
   final List<int> state;
-  int weight = 0;
+  Map<int, int> weightByGroup = {};
   List<StateTransitionData> transitions;
   StateInfo(this.state);
 }
@@ -91,7 +91,7 @@ class CalcBloc implements Disposable {
   static List<StateInfo> getAllStates(ResultData data) {
     List<StateInfo> infoList = [StateInfo(getFirstState(data))];
     for (int i = 0; i < infoList.length; i++) {
-      infoList[i].weight = getStateWeight(data, infoList[i].state);
+      infoList[i].weightByGroup = getStateWeight(data, infoList[i].state);
       var states = _getPossibleStates(infoList[i].state, data);
       infoList[i].transitions = states;
       for (var state in states) {
@@ -103,12 +103,15 @@ class CalcBloc implements Disposable {
     return infoList;
   }
 
-  static int getStateWeight(ResultData data, List<int> state) {
-    var result = 0;
-    for (int i = 1; i < state.length; i++) {
-      result += state[i].abs();
+  static Map<int, int> getStateWeight(ResultData data, List<int> state) {
+    Map<int, int> resMap = {};
+    for (int i = 0; i < data.nodes.length; i++) {
+      resMap[data.getGroup(i)] = 0;
     }
-    return result;
+    for (int i = 1; i < state.length; i++) {
+      resMap[data.getGroup(i)] += state[i].abs();
+    }
+    return resMap;
   }
 
   static compareStates(List<int> state1, List<int> state2) {
@@ -176,26 +179,19 @@ class CalcBloc implements Disposable {
             }
           } else if (initState[i] == -1) {
             for (var state in states) {
-              bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
-                  fl = false;
                   state.state[childId] = 1;
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
-                  fl = false;
                   incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 }
-              }
-
-              if (fl) {
-                state.state[i] = data.isBlock(i) ? -1 : 0;
               }
             }
           }
@@ -228,7 +224,7 @@ class CalcBloc implements Disposable {
             }
           } else if (initState[i] <= 1) {
             for (var state in states) {
-              if(initState[i] != 0) {
+              if (initState[i] != 0) {
                 state.isNewGenerated = true;
               }
               bool fl = true;
@@ -305,26 +301,19 @@ class CalcBloc implements Disposable {
             }
           } else if (initState[i] == 1) {
             for (var state in states) {
-              bool fl = true;
               for (var childId in data.nodes[i].childrenId) {
                 if (data.isChannel(childId) && state.state[childId] == 0) {
-                  fl = false;
                   state.state[childId] = 1;
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 } else if (!data.isChannel(childId) &&
                     state.state[childId] < data.nodes[childId].val.round()) {
-                  fl = false;
                   incrementQueue(state, childId, data);
                   state.emittedByNode[i]++;
                   state.state[i] = 0;
                   break;
                 }
-              }
-
-              if (fl) {
-                state.state[i] = data.isBlock(i) ? 1 : 0;
               }
             }
           }
@@ -332,11 +321,11 @@ class CalcBloc implements Disposable {
       }
       states.addAll(generatedStates);
     }
-    states.forEach((s)=>print('${createStateDesc(initState)} -> ${createStateDesc(s.state)}: ${createStateDesc(s.emittedByNode)}'));
     return states;
   }
 
-  static incrementQueue(StateTransitionData state, int queueId, ResultData data) {
+  static incrementQueue(
+      StateTransitionData state, int queueId, ResultData data) {
     if (state.state[queueId] > 0) {
       state.state[queueId]++;
       return state;
@@ -345,10 +334,12 @@ class CalcBloc implements Disposable {
     for (var childId in data.nodes[queueId].childrenId) {
       if (data.isChannel(childId) && state.state[childId] == 0) {
         state.state[childId] = 1;
+        state.emittedByNode[queueId]++;
         return state;
       } else if (!data.isChannel(childId) &&
           state.state[childId] < data.nodes[childId].val.round()) {
         incrementQueue(state, childId, data);
+        state.emittedByNode[queueId]++;
       }
     }
 
