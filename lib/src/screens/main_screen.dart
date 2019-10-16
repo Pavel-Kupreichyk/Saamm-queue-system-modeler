@@ -55,8 +55,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
             return Slider(
               value: data.toDouble(),
               min: 1,
-              max: 6,
-              divisions: 5,
+              max: 5,
+              divisions: 4,
               onChanged: (val) => widget.bloc.changeNodesCount(val.round()),
               label: 'nodes: ${data.round()}',
             );
@@ -180,8 +180,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
         Slider(
           value: data,
           min: type == NodeType.queue ? 1 : 0.01,
-          max: type == NodeType.queue ? 10 : 1,
-          divisions: type == NodeType.queue ? 9 : 99,
+          max: type == NodeType.queue ? 2 : 1,
+          divisions: type == NodeType.queue ? 1 : 99,
           onChanged: (val) => widget.bloc.setWorkNodeVal(val, workerNum),
           label: type == NodeType.queue
               ? 'size: ${data.round()}'
@@ -232,8 +232,8 @@ class _MainScreenState extends StateWithBag<MainScreen> {
         Slider(
           value: data,
           min: type == NodeType.periodicSource ? 1 : 0.01,
-          max: type == NodeType.periodicSource ? 10 : 1,
-          divisions: type == NodeType.periodicSource ? 9 : 99,
+          max: type == NodeType.periodicSource ? 2 : 1,
+          divisions: type == NodeType.periodicSource ? 1 : 99,
           onChanged: (val) => widget.bloc.setWorkNodeVal(val, 0),
           label: type == NodeType.periodicSource
               ? 'period: ${data.round()}'
